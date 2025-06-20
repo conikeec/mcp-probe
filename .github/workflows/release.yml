@@ -213,6 +213,8 @@ jobs:
           cd target/${{ matrix.target }}/release
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             certutil -hashfile ${{ steps.package.outputs.ARCHIVE_NAME }} SHA256 > ${{ steps.package.outputs.ARCHIVE_NAME }}.sha256
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            shasum -a 256 ${{ steps.package.outputs.ARCHIVE_NAME }} > ${{ steps.package.outputs.ARCHIVE_NAME }}.sha256
           else
             sha256sum ${{ steps.package.outputs.ARCHIVE_NAME }} > ${{ steps.package.outputs.ARCHIVE_NAME }}.sha256
           fi
