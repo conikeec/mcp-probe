@@ -2,7 +2,7 @@
 //!
 //! This module provides complete type definitions for all MCP messages according to the
 //! MCP specification. All message types are designed to be:
-//! 
+//!
 //! - **Spec-compliant**: Exact adherence to MCP JSON-RPC 2.0 protocol
 //! - **Type-safe**: Leverage Rust's type system to prevent protocol violations
 //! - **Serializable**: Full serde support for JSON serialization/deserialization
@@ -46,61 +46,58 @@
 
 pub mod core;
 pub mod initialization;
-pub mod tools;
-pub mod resources;
-pub mod prompts;
-pub mod sampling;
 pub mod logging;
+pub mod prompts;
+pub mod resources;
+pub mod sampling;
+pub mod tools;
 
 pub use core::*;
 pub use initialization::*;
-pub use tools::{
-    Tool, ToolResult, ListToolsRequest, ListToolsResponse, 
-    CallToolRequest, CallToolResponse,
-    ToolListChangedNotification,
-    ResourceReference as ToolResourceReference,
-};
-pub use resources::{
-    Resource, ResourceContent, ListResourcesRequest, ListResourcesResponse,
-    ReadResourceRequest, ReadResourceResponse,
-    SubscribeRequest, UnsubscribeRequest,
-    ResourceUpdatedNotification, ResourceListChangedNotification,
+pub use logging::{
+    LogLevel, LoggingNotification, ProgressNotification,
+    PromptListChangedNotification as LoggingPromptListChangedNotification,
+    ResourceListChangedNotification as LoggingResourceListChangedNotification,
+    ResourceUpdatedNotification as LoggingResourceUpdatedNotification, SetLevelRequest,
+    ToolListChangedNotification as LoggingToolListChangedNotification,
 };
 pub use prompts::{
-    Prompt, PromptMessage, PromptContent, GetPromptRequest, GetPromptResponse,
-    ListPromptsRequest, ListPromptsResponse,
-    PromptListChangedNotification,
-    MessageRole as PromptMessageRole,
-    ResourceReference as PromptResourceReference,
+    GetPromptRequest, GetPromptResponse, ListPromptsRequest, ListPromptsResponse,
+    MessageRole as PromptMessageRole, Prompt, PromptContent, PromptListChangedNotification,
+    PromptMessage, ResourceReference as PromptResourceReference,
+};
+pub use resources::{
+    ListResourcesRequest, ListResourcesResponse, ReadResourceRequest, ReadResourceResponse,
+    Resource, ResourceContent, ResourceListChangedNotification, ResourceUpdatedNotification,
+    SubscribeRequest, UnsubscribeRequest,
 };
 pub use sampling::{
-    CompleteRequest, CompleteResponse, CompletionArgument, CompletionResult,
-    MessageRole, SamplingMessage, SamplingContent,
-    ModelPreferences, CostPriority, SpeedPriority, IntelligencePriority,
-    StopReason,
+    CompleteRequest, CompleteResponse, CompletionArgument, CompletionResult, CostPriority,
+    IntelligencePriority, MessageRole, ModelPreferences, SamplingContent, SamplingMessage,
+    SpeedPriority, StopReason,
 };
-pub use logging::{
-    LogLevel, SetLevelRequest, LoggingNotification,
-    ProgressNotification,
-    ResourceUpdatedNotification as LoggingResourceUpdatedNotification,
-    ResourceListChangedNotification as LoggingResourceListChangedNotification,
-    ToolListChangedNotification as LoggingToolListChangedNotification,
-    PromptListChangedNotification as LoggingPromptListChangedNotification,
+pub use tools::{
+    CallToolRequest, CallToolResponse, ListToolsRequest, ListToolsResponse,
+    ResourceReference as ToolResourceReference, Tool, ToolListChangedNotification, ToolResult,
 };
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// MCP protocol version identifier.
-/// 
+///
 /// The MCP protocol uses semantic versioning with date-based versions.
 /// This enum provides type-safe handling of supported protocol versions.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ProtocolVersion {
-    /// MCP Protocol version 2024-11-05 (current stable)
+    /// MCP Protocol version 2024-11-05 (legacy)
     #[serde(rename = "2024-11-05")]
     V2024_11_05,
-    
+
+    /// MCP Protocol version 2025-03-26 (current stable)
+    #[serde(rename = "2025-03-26")]
+    V2025_03_26,
+
     /// Future protocol versions can be added here
     /// Custom version string for forward compatibility
     #[serde(untagged)]
@@ -112,24 +109,25 @@ impl ProtocolVersion {
     pub fn as_str(&self) -> &str {
         match self {
             Self::V2024_11_05 => "2024-11-05",
+            Self::V2025_03_26 => "2025-03-26",
             Self::Custom(version) => version,
         }
     }
 
     /// Check if this version is supported by the current implementation.
     pub fn is_supported(&self) -> bool {
-        matches!(self, Self::V2024_11_05)
+        matches!(self, Self::V2024_11_05 | Self::V2025_03_26)
     }
 
     /// Get all supported protocol versions.
     pub fn supported_versions() -> Vec<Self> {
-        vec![Self::V2024_11_05]
+        vec![Self::V2024_11_05, Self::V2025_03_26]
     }
 }
 
 impl Default for ProtocolVersion {
     fn default() -> Self {
-        Self::V2024_11_05
+        Self::V2025_03_26
     }
 }
 
@@ -140,7 +138,7 @@ impl std::fmt::Display for ProtocolVersion {
 }
 
 /// Generic capability structure for extensible capability negotiation.
-/// 
+///
 /// Capabilities are used during initialization to negotiate what features
 /// both client and server support. This structure allows for both standard
 /// and custom capabilities.
@@ -149,14 +147,14 @@ pub struct Capabilities {
     /// Standard MCP capabilities
     #[serde(flatten)]
     pub standard: StandardCapabilities,
-    
+
     /// Custom or experimental capabilities
     #[serde(flatten)]
     pub custom: HashMap<String, serde_json::Value>,
 }
 
 /// Standard MCP capabilities as defined in the specification.
-/// 
+///
 /// These capabilities control what features are available during the MCP session.
 /// Both client and server declare their capabilities during initialization.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -164,23 +162,23 @@ pub struct StandardCapabilities {
     /// Server capability: Can provide tools for execution
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ToolCapabilities>,
-    
+
     /// Server capability: Can provide resources for reading
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resources: Option<ResourceCapabilities>,
-    
+
     /// Server capability: Can provide prompt templates
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompts: Option<PromptCapabilities>,
-    
+
     /// Client capability: Can handle sampling requests from server
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sampling: Option<SamplingCapabilities>,
-    
+
     /// Server capability: Can send log messages to client
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logging: Option<LoggingCapabilities>,
-    
+
     /// Client capability: Can provide root directories for server operations
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roots: Option<RootsCapabilities>,
@@ -200,7 +198,7 @@ pub struct ResourceCapabilities {
     /// Whether the server supports subscribing to resource changes
     #[serde(skip_serializing_if = "Option::is_none")]
     pub subscribe: Option<bool>,
-    
+
     /// Whether the server supports listing changed resources
     #[serde(skip_serializing_if = "Option::is_none")]
     pub list_changed: Option<bool>,
@@ -239,17 +237,17 @@ pub struct RootsCapabilities {
 }
 
 /// Implementation information for client or server.
-/// 
+///
 /// This provides metadata about the MCP implementation, useful for
 /// debugging, telemetry, and compatibility checking.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Implementation {
     /// Name of the implementation (e.g., "mcp-probe")
     pub name: String,
-    
+
     /// Version of the implementation (e.g., "0.1.0")
     pub version: String,
-    
+
     /// Additional implementation metadata
     #[serde(flatten)]
     pub metadata: HashMap<String, serde_json::Value>,
@@ -273,7 +271,7 @@ impl Implementation {
 }
 
 /// Progress token for long-running operations.
-/// 
+///
 /// Operations that may take significant time can include progress tokens
 /// to allow clients to track progress and provide user feedback.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -313,7 +311,7 @@ impl std::fmt::Display for ProgressToken {
 }
 
 /// Pagination cursor for list operations.
-/// 
+///
 /// Used to support efficient pagination of large result sets in list operations.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PaginationCursor {
@@ -393,10 +391,13 @@ mod tests {
     fn test_implementation_creation() {
         let impl_info = Implementation::new("mcp-probe", "0.1.0")
             .with_metadata("platform", serde_json::json!("rust"));
-        
+
         assert_eq!(impl_info.name, "mcp-probe");
         assert_eq!(impl_info.version, "0.1.0");
-        assert_eq!(impl_info.metadata.get("platform").unwrap(), &serde_json::json!("rust"));
+        assert_eq!(
+            impl_info.metadata.get("platform").unwrap(),
+            &serde_json::json!("rust")
+        );
     }
 
     #[test]
@@ -410,8 +411,8 @@ mod tests {
         // Test serialization
         let json_string = serde_json::to_string(&string_token).unwrap();
         let json_number = serde_json::to_string(&number_token).unwrap();
-        
+
         assert_eq!(json_string, "\"progress-1\"");
         assert_eq!(json_number, "42");
     }
-} 
+}

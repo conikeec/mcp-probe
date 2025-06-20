@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Client-to-server initialization request.
-/// 
+///
 /// This is the first message sent by the client to establish the MCP session.
 /// It includes the desired protocol version, client capabilities, and client metadata.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -37,10 +37,10 @@ pub struct InitializeRequest {
     /// Protocol version requested by the client
     #[serde(rename = "protocolVersion")]
     pub protocol_version: ProtocolVersion,
-    
+
     /// Capabilities offered by the client
     pub capabilities: Capabilities,
-    
+
     /// Information about the client implementation
     #[serde(rename = "clientInfo")]
     pub client_info: Implementation,
@@ -48,12 +48,12 @@ pub struct InitializeRequest {
 
 impl InitializeRequest {
     /// Create a new initialization request.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::{InitializeRequest, ProtocolVersion, Capabilities, Implementation};
-    /// 
+    ///
     /// let request = InitializeRequest::new(
     ///     ProtocolVersion::V2024_11_05,
     ///     Capabilities::default(),
@@ -73,15 +73,15 @@ impl InitializeRequest {
     }
 
     /// Create a basic initialization request with default capabilities.
-    /// 
+    ///
     /// This is a convenience method for simple clients that don't need
     /// to specify custom capabilities.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializeRequest;
-    /// 
+    ///
     /// let request = InitializeRequest::basic("my-client", "1.0.0");
     /// ```
     pub fn basic(client_name: impl Into<String>, client_version: impl Into<String>) -> Self {
@@ -93,13 +93,13 @@ impl InitializeRequest {
     }
 
     /// Add custom client metadata to the initialization request.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializeRequest;
     /// use serde_json::json;
-    /// 
+    ///
     /// let request = InitializeRequest::basic("my-client", "1.0.0")
     ///     .with_client_metadata("platform", json!("rust"))
     ///     .with_client_metadata("os", json!("linux"));
@@ -116,7 +116,7 @@ impl InitializeRequest {
 }
 
 /// Server-to-client initialization response.
-/// 
+///
 /// This is sent by the server in response to the client's initialization request.
 /// It includes the server's capabilities, server metadata, and the negotiated protocol version.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,14 +124,14 @@ pub struct InitializeResponse {
     /// Protocol version that will be used for the session
     #[serde(rename = "protocolVersion")]
     pub protocol_version: ProtocolVersion,
-    
+
     /// Capabilities offered by the server
     pub capabilities: Capabilities,
-    
+
     /// Information about the server implementation
     #[serde(rename = "serverInfo")]
     pub server_info: Implementation,
-    
+
     /// Optional instructions or additional information for the client
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
@@ -139,12 +139,12 @@ pub struct InitializeResponse {
 
 impl InitializeResponse {
     /// Create a new initialization response.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::{InitializeResponse, ProtocolVersion, Capabilities, Implementation};
-    /// 
+    ///
     /// let response = InitializeResponse::new(
     ///     ProtocolVersion::V2024_11_05,
     ///     Capabilities::default(),
@@ -167,12 +167,12 @@ impl InitializeResponse {
     }
 
     /// Create a basic initialization response with default capabilities.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializeResponse;
-    /// 
+    ///
     /// let response = InitializeResponse::basic("my-server", "1.0.0");
     /// ```
     pub fn basic(server_name: impl Into<String>, server_version: impl Into<String>) -> Self {
@@ -185,15 +185,15 @@ impl InitializeResponse {
     }
 
     /// Add instructions for the client.
-    /// 
+    ///
     /// Instructions can provide guidance to the client about how to use
     /// the server's capabilities effectively.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializeResponse;
-    /// 
+    ///
     /// let response = InitializeResponse::basic("my-server", "1.0.0")
     ///     .with_instructions("Use the 'calculator' tool for math operations");
     /// ```
@@ -203,13 +203,13 @@ impl InitializeResponse {
     }
 
     /// Add custom server metadata to the initialization response.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializeResponse;
     /// use serde_json::json;
-    /// 
+    ///
     /// let response = InitializeResponse::basic("my-server", "1.0.0")
     ///     .with_server_metadata("supported_languages", json!(["python", "javascript"]));
     /// ```
@@ -220,11 +220,11 @@ impl InitializeResponse {
 }
 
 /// Client-to-server initialization completion notification.
-/// 
+///
 /// This notification is sent by the client after receiving and processing
 /// the server's initialization response. It signals that the client is
 /// ready to begin normal operations.
-/// 
+///
 /// This is a notification (not a request), so the server should not respond.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InitializedNotification {
@@ -235,12 +235,12 @@ pub struct InitializedNotification {
 
 impl InitializedNotification {
     /// Create a new initialized notification.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializedNotification;
-    /// 
+    ///
     /// let notification = InitializedNotification::new();
     /// ```
     pub fn new() -> Self {
@@ -250,17 +250,17 @@ impl InitializedNotification {
     }
 
     /// Create an initialized notification with custom metadata.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializedNotification;
     /// use serde_json::json;
     /// use std::collections::HashMap;
-    /// 
+    ///
     /// let mut metadata = HashMap::new();
     /// metadata.insert("client_ready_time".to_string(), json!("2024-01-15T10:30:00Z"));
-    /// 
+    ///
     /// let notification = InitializedNotification::with_metadata(metadata);
     /// ```
     pub fn with_metadata(metadata: std::collections::HashMap<String, Value>) -> Self {
@@ -268,13 +268,13 @@ impl InitializedNotification {
     }
 
     /// Add a metadata field to the notification.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::InitializedNotification;
     /// use serde_json::json;
-    /// 
+    ///
     /// let notification = InitializedNotification::new()
     ///     .add_metadata("timestamp", json!("2024-01-15T10:30:00Z"));
     /// ```
@@ -291,7 +291,7 @@ impl Default for InitializedNotification {
 }
 
 /// Ping request for connection health checking.
-/// 
+///
 /// Either client or server can send ping requests to verify that the
 /// connection is still active and responsive.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -303,12 +303,12 @@ pub struct PingRequest {
 
 impl PingRequest {
     /// Create a new ping request.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::PingRequest;
-    /// 
+    ///
     /// let ping = PingRequest::new();
     /// ```
     pub fn new() -> Self {
@@ -318,31 +318,32 @@ impl PingRequest {
     }
 
     /// Create a ping request with a timestamp.
-    /// 
+    ///
     /// The timestamp can be used to measure round-trip time.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::PingRequest;
     /// use serde_json::json;
-    /// 
+    ///
     /// let ping = PingRequest::with_timestamp("2024-01-15T10:30:00Z");
     /// ```
     pub fn with_timestamp(timestamp: impl Into<String>) -> Self {
         let mut ping = Self::new();
-        ping.metadata.insert("timestamp".to_string(), Value::String(timestamp.into()));
+        ping.metadata
+            .insert("timestamp".to_string(), Value::String(timestamp.into()));
         ping
     }
 
     /// Add metadata to the ping request.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::PingRequest;
     /// use serde_json::json;
-    /// 
+    ///
     /// let ping = PingRequest::new()
     ///     .add_metadata("source", json!("health_check"));
     /// ```
@@ -359,7 +360,7 @@ impl Default for PingRequest {
 }
 
 /// Pong response to ping requests.
-/// 
+///
 /// This is sent in response to ping requests and can include the original
 /// ping metadata for round-trip time calculation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -371,12 +372,12 @@ pub struct PongResponse {
 
 impl PongResponse {
     /// Create a new pong response.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::PongResponse;
-    /// 
+    ///
     /// let pong = PongResponse::new();
     /// ```
     pub fn new() -> Self {
@@ -386,15 +387,15 @@ impl PongResponse {
     }
 
     /// Create a pong response echoing ping metadata.
-    /// 
+    ///
     /// This is useful for round-trip time calculation.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::{PingRequest, PongResponse};
     /// use serde_json::json;
-    /// 
+    ///
     /// let ping = PingRequest::with_timestamp("2024-01-15T10:30:00Z");
     /// let pong = PongResponse::echo(&ping);
     /// ```
@@ -405,13 +406,13 @@ impl PongResponse {
     }
 
     /// Add metadata to the pong response.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::PongResponse;
     /// use serde_json::json;
-    /// 
+    ///
     /// let pong = PongResponse::new()
     ///     .add_metadata("response_time", json!("2024-01-15T10:30:01Z"));
     /// ```
@@ -435,7 +436,7 @@ mod tests {
     #[test]
     fn test_initialize_request_creation() {
         let request = InitializeRequest::basic("test-client", "1.0.0");
-        
+
         assert_eq!(request.protocol_version, ProtocolVersion::V2024_11_05);
         assert_eq!(request.client_info.name, "test-client");
         assert_eq!(request.client_info.version, "1.0.0");
@@ -447,9 +448,15 @@ mod tests {
         let request = InitializeRequest::basic("test-client", "1.0.0")
             .with_client_metadata("platform", json!("rust"))
             .with_client_metadata("os", json!("linux"));
-        
-        assert_eq!(request.client_info.metadata.get("platform").unwrap(), &json!("rust"));
-        assert_eq!(request.client_info.metadata.get("os").unwrap(), &json!("linux"));
+
+        assert_eq!(
+            request.client_info.metadata.get("platform").unwrap(),
+            &json!("rust")
+        );
+        assert_eq!(
+            request.client_info.metadata.get("os").unwrap(),
+            &json!("linux")
+        );
     }
 
     #[test]
@@ -457,17 +464,23 @@ mod tests {
         let response = InitializeResponse::basic("test-server", "2.0.0")
             .with_instructions("Use tools carefully")
             .with_server_metadata("max_tools", json!(10));
-        
+
         assert_eq!(response.server_info.name, "test-server");
-        assert_eq!(response.instructions, Some("Use tools carefully".to_string()));
-        assert_eq!(response.server_info.metadata.get("max_tools").unwrap(), &json!(10));
+        assert_eq!(
+            response.instructions,
+            Some("Use tools carefully".to_string())
+        );
+        assert_eq!(
+            response.server_info.metadata.get("max_tools").unwrap(),
+            &json!(10)
+        );
     }
 
     #[test]
     fn test_initialized_notification() {
-        let notification = InitializedNotification::new()
-            .add_metadata("timestamp", json!("2024-01-15T10:30:00Z"));
-        
+        let notification =
+            InitializedNotification::new().add_metadata("timestamp", json!("2024-01-15T10:30:00Z"));
+
         assert_eq!(
             notification.metadata.get("timestamp").unwrap(),
             &json!("2024-01-15T10:30:00Z")
@@ -476,15 +489,21 @@ mod tests {
 
     #[test]
     fn test_ping_pong() {
-        let ping = PingRequest::with_timestamp("2024-01-15T10:30:00Z")
-            .add_metadata("sequence", json!(1));
-        
-        let pong = PongResponse::echo(&ping)
-            .add_metadata("response_time", json!("2024-01-15T10:30:01Z"));
-        
-        assert_eq!(pong.metadata.get("timestamp").unwrap(), &json!("2024-01-15T10:30:00Z"));
+        let ping =
+            PingRequest::with_timestamp("2024-01-15T10:30:00Z").add_metadata("sequence", json!(1));
+
+        let pong =
+            PongResponse::echo(&ping).add_metadata("response_time", json!("2024-01-15T10:30:01Z"));
+
+        assert_eq!(
+            pong.metadata.get("timestamp").unwrap(),
+            &json!("2024-01-15T10:30:00Z")
+        );
         assert_eq!(pong.metadata.get("sequence").unwrap(), &json!(1));
-        assert_eq!(pong.metadata.get("response_time").unwrap(), &json!("2024-01-15T10:30:01Z"));
+        assert_eq!(
+            pong.metadata.get("response_time").unwrap(),
+            &json!("2024-01-15T10:30:01Z")
+        );
     }
 
     #[test]
@@ -494,4 +513,4 @@ mod tests {
         let deserialized: InitializeRequest = serde_json::from_str(&json).unwrap();
         assert_eq!(request, deserialized);
     }
-} 
+}

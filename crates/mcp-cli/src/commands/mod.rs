@@ -5,11 +5,11 @@
 
 use anyhow::Result;
 
-pub mod debug;
-pub mod test;
 pub mod config;
-pub mod validate;
+pub mod debug;
 pub mod export;
+pub mod test;
+pub mod validate;
 
 // Validation engine module
 pub mod validation;
@@ -40,22 +40,22 @@ impl CommandContext {
             output_format: cli.output.clone(),
         }
     }
-    
+
     /// Check if we should show verbose output
     #[allow(dead_code)]
     pub fn is_verbose(&self) -> bool {
         self.verbosity > 0
     }
-    
+
     /// Check if we should show debug output
     #[allow(dead_code)]
     pub fn is_debug(&self) -> bool {
         self.verbosity > 1
     }
-    
+
     /// Check if we should show trace output
     #[allow(dead_code)]
     pub fn is_trace(&self) -> bool {
         self.verbosity > 2
     }
-} 
+}

@@ -12,18 +12,23 @@ mod cli;
 mod commands;
 mod config;
 mod flows;
+mod search;
 mod tui;
-mod utils;
 
 use cli::{Cli, Commands};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging based on environment
-    init_logging()?;
-
-    // Parse command line arguments
+    // Parse command line arguments first to check if we're in TUI mode
     let cli = Cli::parse();
+
+    // Initialize logging based on command type
+    let tui_mode = matches!(cli.command, Commands::Debug(ref cmd) if !cmd.non_interactive);
+    init_logging(tui_mode)?;
+
+    // Log the startup
+    tracing::info!("MCP Probe starting up, TUI mode: {}", tui_mode);
+    tracing::debug!("Command: {:?}", cli.command);
 
     // Execute the appropriate command
     match cli.command {
@@ -36,25 +41,56 @@ async fn main() -> Result<()> {
 }
 
 /// Initialize structured logging based on environment variables and CLI options
-fn init_logging() -> Result<()> {
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            // Default to info level with specific module filtering
-            "mcp_probe=debug,mcp_core=debug,info".into()
-        });
+fn init_logging(tui_mode: bool) -> Result<()> {
+    if tui_mode {
+        // In TUI mode, use immediate file logging (synchronous to ensure writes)
+        let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "mcp_probe=debug,mcp_core=debug,info".into());
 
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        .with_target(true)
-        .with_thread_ids(false)
-        .with_thread_names(false)
-        .with_file(false)
-        .with_line_number(false);
+        // Create a simple file writer that writes immediately
+        let log_file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open("mcp-probe-debug.log")?;
 
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(fmt_layer)
-        .init();
+        let file_layer = tracing_subscriber::fmt::layer()
+            .with_writer(log_file)
+            .with_target(true)
+            .with_thread_ids(true)
+            .with_file(true)
+            .with_line_number(true)
+            .with_ansi(false); // No ANSI codes in log file
 
-    tracing::debug!("Logging initialized");
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(file_layer)
+            .init();
+
+        // Write an initial log to confirm logging is working
+        tracing::info!("=== MCP Probe Debug Log Started ===");
+    } else {
+        // Normal mode with full logging
+        let env_filter =
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                // Default to info level with specific module filtering
+                "mcp_probe=debug,mcp_core=debug,info".into()
+            });
+
+        let fmt_layer = tracing_subscriber::fmt::layer()
+            .with_target(true)
+            .with_thread_ids(false)
+            .with_thread_names(false)
+            .with_file(false)
+            .with_line_number(false);
+
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(fmt_layer)
+            .init();
+
+        tracing::debug!("Logging initialized");
+    }
+
     Ok(())
-} 
+}

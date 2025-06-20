@@ -8,24 +8,22 @@
 //! abstracting away transport details and providing a clean async API.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use tokio::sync::{mpsc, RwLock, oneshot};
-use tokio::time::{timeout, Instant, sleep};
+use tokio::sync::{mpsc, oneshot, RwLock};
+use tokio::time::{sleep, Instant};
 
 use crate::error::{McpError, McpResult, ProtocolError};
-use crate::transport::{Transport, TransportConfig, factory::TransportFactory};
 use crate::messages::{
-    JsonRpcMessage, JsonRpcRequest, JsonRpcResponse, JsonRpcNotification, JsonRpcId,
-    InitializeRequest, InitializeResponse, InitializedNotification,
-    Implementation, ProtocolVersion, Capabilities,
-    ProgressNotification, 
-    ResourceUpdatedNotification, ResourceListChangedNotification,
-    ToolListChangedNotification, PromptListChangedNotification,
+    Capabilities, Implementation, InitializeRequest, InitializeResponse, InitializedNotification,
+    JsonRpcId, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
+    ProgressNotification, PromptListChangedNotification, ProtocolVersion,
+    ResourceListChangedNotification, ResourceUpdatedNotification, ToolListChangedNotification,
 };
+use crate::transport::{factory::TransportFactory, Transport, TransportConfig};
 
 use tracing::{debug, info, warn};
 
@@ -34,19 +32,19 @@ use tracing::{debug, info, warn};
 pub struct ClientConfig {
     /// Timeout for individual requests (default: 30 seconds)
     pub request_timeout: Duration,
-    
+
     /// Timeout for the initialization process (default: 10 seconds)  
     pub init_timeout: Duration,
-    
+
     /// Maximum number of retry attempts for failed operations
     pub max_retries: u32,
-    
+
     /// Base delay for exponential backoff retries
     pub retry_base_delay: Duration,
-    
+
     /// Whether to automatically handle server notifications
     pub auto_handle_notifications: bool,
-    
+
     /// Buffer size for incoming messages
     pub message_buffer_size: usize,
 }
@@ -123,25 +121,37 @@ pub trait NotificationHandler: Send + Sync {
     }
 
     /// Handle resource updated notifications
-    async fn handle_resource_updated(&self, notification: ResourceUpdatedNotification) -> McpResult<()> {
+    async fn handle_resource_updated(
+        &self,
+        notification: ResourceUpdatedNotification,
+    ) -> McpResult<()> {
         debug!("Resource updated: {:?}", notification);
         Ok(())
     }
 
     /// Handle resource list changed notifications
-    async fn handle_resource_list_changed(&self, notification: ResourceListChangedNotification) -> McpResult<()> {
+    async fn handle_resource_list_changed(
+        &self,
+        notification: ResourceListChangedNotification,
+    ) -> McpResult<()> {
         debug!("Resource list changed: {:?}", notification);
         Ok(())
     }
 
     /// Handle tool list changed notifications
-    async fn handle_tool_list_changed(&self, notification: ToolListChangedNotification) -> McpResult<()> {
+    async fn handle_tool_list_changed(
+        &self,
+        notification: ToolListChangedNotification,
+    ) -> McpResult<()> {
         debug!("Tool list changed: {:?}", notification);
         Ok(())
     }
 
     /// Handle prompt list changed notifications  
-    async fn handle_prompt_list_changed(&self, notification: PromptListChangedNotification) -> McpResult<()> {
+    async fn handle_prompt_list_changed(
+        &self,
+        notification: PromptListChangedNotification,
+    ) -> McpResult<()> {
         debug!("Prompt list changed: {:?}", notification);
         Ok(())
     }
@@ -208,7 +218,7 @@ impl McpClient {
         notification_handler: Box<dyn NotificationHandler>,
     ) -> McpResult<Self> {
         let transport = TransportFactory::create(transport_config).await?;
-        
+
         Ok(Self {
             transport,
             config: client_config,
@@ -236,7 +246,8 @@ impl McpClient {
             transport_config,
             ClientConfig::default(),
             Box::new(DefaultNotificationHandler),
-        ).await
+        )
+        .await
     }
 
     /// Get the current client state.
@@ -257,6 +268,11 @@ impl McpClient {
     /// Check if the client is connected and ready for operations.
     pub async fn is_ready(&self) -> bool {
         matches!(self.state().await, ClientState::Ready)
+    }
+
+    /// Get transport information and metadata.
+    pub fn transport_info(&self) -> crate::transport::TransportInfo {
+        self.transport.get_info()
     }
 
     /// Connect to the MCP server and perform protocol initialization.
@@ -295,7 +311,7 @@ impl McpClient {
     /// ```
     pub async fn connect(&mut self, client_info: Implementation) -> McpResult<ServerInfo> {
         info!("Connecting MCP client to server");
-        
+
         // Update state
         *self.state.write().await = ClientState::Connecting;
 
@@ -316,7 +332,10 @@ impl McpClient {
         *self.state.write().await = ClientState::Ready;
         *self.server_info.write().await = Some(server_info.clone());
 
-        info!("MCP client connected successfully to {}", server_info.implementation.name);
+        info!(
+            "MCP client connected successfully to {}",
+            server_info.implementation.name
+        );
         Ok(server_info)
     }
 
@@ -362,6 +381,20 @@ impl McpClient {
         Ok(())
     }
 
+    /// Send a request to the server and wait for a response.
+    pub async fn send_request<T>(&mut self, method: &str, params: T) -> McpResult<JsonRpcResponse>
+    where
+        T: serde::Serialize,
+    {
+        if !self.is_ready().await {
+            return Err(McpError::Protocol(ProtocolError::NotInitialized {
+                reason: "Client not ready for requests".to_string(),
+            }));
+        }
+
+        self.send_request_with_timeout(method, params, None).await
+    }
+
     // Private helper methods
 
     fn set_error_state(&self, error: String) {
@@ -376,33 +409,51 @@ impl McpClient {
     }
 
     async fn start_message_processing(&mut self) -> McpResult<()> {
+        tracing::info!("Starting message processing task");
         let (sender, mut receiver) = mpsc::unbounded_channel();
         self._message_sender = Some(sender);
-        
+
         // Clone necessary data for the task
         let pending_requests = Arc::clone(&self.pending_requests);
         let stats = Arc::clone(&self.stats);
         let notification_handler = Arc::clone(&self.notification_handler);
-        
+
         // Start message processing task
         tokio::spawn(async move {
+            tracing::debug!("Message processing task started, waiting for messages");
             while let Some(message) = receiver.recv().await {
+                tracing::debug!("Received message in processing task: {:?}", message);
                 match message {
                     JsonRpcMessage::Response(response) => {
+                        tracing::debug!("Processing response with ID: {}", response.id);
                         // Handle response correlation
-                        if let Some(sender) = pending_requests.write().await.remove(&response.id.to_string()) {
+                        if let Some(sender) = pending_requests
+                            .write()
+                            .await
+                            .remove(&response.id.to_string())
+                        {
+                            tracing::debug!(
+                                "Found pending request for ID {}, sending response",
+                                response.id
+                            );
                             let _ = sender.send(response);
                             stats.write().await.responses_received += 1;
+                        } else {
+                            tracing::warn!(
+                                "Received response for unknown request ID: {}",
+                                response.id
+                            );
                         }
                     }
                     JsonRpcMessage::Notification(notification) => {
+                        tracing::debug!("Processing notification: {}", notification.method);
                         // Handle server notifications
                         Self::handle_notification(&*notification_handler, notification).await;
                         stats.write().await.notifications_received += 1;
                     }
                     JsonRpcMessage::Request(_) => {
                         // Server-to-client requests are rare in MCP but possible
-                        warn!("Received unexpected server-to-client request");
+                        tracing::warn!("Received unexpected server-to-client request");
                     }
                 }
             }
@@ -425,28 +476,36 @@ impl McpClient {
             }
             "notifications/resources/updated" => {
                 if let Some(params) = notification.params {
-                    if let Ok(resource_updated) = serde_json::from_value::<ResourceUpdatedNotification>(params) {
+                    if let Ok(resource_updated) =
+                        serde_json::from_value::<ResourceUpdatedNotification>(params)
+                    {
                         let _ = handler.handle_resource_updated(resource_updated).await;
                     }
                 }
             }
             "notifications/resources/list_changed" => {
                 if let Some(params) = notification.params {
-                    if let Ok(list_changed) = serde_json::from_value::<ResourceListChangedNotification>(params) {
+                    if let Ok(list_changed) =
+                        serde_json::from_value::<ResourceListChangedNotification>(params)
+                    {
                         let _ = handler.handle_resource_list_changed(list_changed).await;
                     }
                 }
             }
             "notifications/tools/list_changed" => {
                 if let Some(params) = notification.params {
-                    if let Ok(list_changed) = serde_json::from_value::<ToolListChangedNotification>(params) {
+                    if let Ok(list_changed) =
+                        serde_json::from_value::<ToolListChangedNotification>(params)
+                    {
                         let _ = handler.handle_tool_list_changed(list_changed).await;
                     }
                 }
             }
             "notifications/prompts/list_changed" => {
                 if let Some(params) = notification.params {
-                    if let Ok(list_changed) = serde_json::from_value::<PromptListChangedNotification>(params) {
+                    if let Ok(list_changed) =
+                        serde_json::from_value::<PromptListChangedNotification>(params)
+                    {
                         let _ = handler.handle_prompt_list_changed(list_changed).await;
                     }
                 }
@@ -457,38 +516,71 @@ impl McpClient {
         }
     }
 
-    async fn perform_initialization(&mut self, client_info: Implementation) -> McpResult<ServerInfo> {
+    async fn perform_initialization(
+        &mut self,
+        client_info: Implementation,
+    ) -> McpResult<ServerInfo> {
         *self.state.write().await = ClientState::Initializing;
+        tracing::info!("Starting MCP protocol initialization");
 
-        // Create initialize request
+        // Create initialize request with proper client capabilities
+        let capabilities = Capabilities {
+            standard: crate::messages::StandardCapabilities {
+                tools: Some(crate::messages::ToolCapabilities {
+                    list_changed: Some(true),
+                }),
+                resources: Some(crate::messages::ResourceCapabilities {
+                    subscribe: Some(true),
+                    list_changed: Some(true),
+                }),
+                prompts: Some(crate::messages::PromptCapabilities {
+                    list_changed: Some(true),
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
         let request = InitializeRequest {
             protocol_version: ProtocolVersion::default(),
-            capabilities: Capabilities::default(), // Client capabilities
+            capabilities,
             client_info,
         };
 
-        // Send initialize request
-        let response = self.send_request_with_timeout(
-            "initialize",
-            request,
-            Some(self.config.init_timeout),
-        ).await?;
+        tracing::debug!("Sending initialize request: {:?}", request);
+
+        // Send initialize request bypassing ready check (we're initializing!)
+        let response = self
+            .send_initialization_request("initialize", request, Some(self.config.init_timeout))
+            .await?;
 
         // Parse initialize response
+        tracing::debug!("Received initialize response: {:?}", response);
         let init_response: InitializeResponse = match response.result {
-            Some(result) => serde_json::from_value(result)?,
+            Some(result) => {
+                tracing::debug!("Parsing initialize response result: {:?}", result);
+                serde_json::from_value(result)?
+            }
             None => {
+                tracing::error!("Initialize response missing result field");
                 return Err(McpError::Protocol(ProtocolError::InitializationFailed {
                     reason: "Missing result in initialize response".to_string(),
                 }));
             }
         };
 
+        tracing::info!(
+            "Successfully parsed initialize response from server: {}",
+            init_response.server_info.name
+        );
+
         // Send initialized notification
         let initialized = InitializedNotification {
             metadata: HashMap::new(), // Empty metadata map
         };
-        self.send_notification("initialized", initialized).await?;
+        tracing::debug!("Sending initialized notification");
+        self.send_initialized_notification("initialized", initialized)
+            .await?;
 
         // Create server info
         let server_info = ServerInfo {
@@ -499,6 +591,50 @@ impl McpClient {
         };
 
         Ok(server_info)
+    }
+
+    /// Send initialization request without ready state check
+    async fn send_initialization_request<T>(
+        &mut self,
+        method: &str,
+        params: T,
+        timeout_duration: Option<Duration>,
+    ) -> McpResult<JsonRpcResponse>
+    where
+        T: serde::Serialize,
+    {
+        tracing::debug!("Sending initialization request: {}", method);
+        let request_id = self.generate_request_id();
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::String(request_id.clone()),
+            method: method.to_string(),
+            params: Some(serde_json::to_value(params)?),
+        };
+
+        let timeout_val = timeout_duration.unwrap_or(self.config.request_timeout);
+
+        // Send request with retries (bypassing ready check)
+        self.send_request_with_retries(request, timeout_val).await
+    }
+
+    /// Send initialization notification without ready state check
+    async fn send_initialized_notification<T>(&mut self, method: &str, params: T) -> McpResult<()>
+    where
+        T: serde::Serialize,
+    {
+        tracing::debug!("Sending initialization notification: {}", method);
+
+        let notification = JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: method.to_string(),
+            params: Some(serde_json::to_value(params)?),
+        };
+
+        self.transport.send_notification(notification).await?;
+        self.stats.write().await.notifications_sent += 1;
+        tracing::debug!("Initialization notification sent successfully");
+        Ok(())
     }
 
     async fn send_request_with_timeout<T>(
@@ -519,7 +655,7 @@ impl McpClient {
         };
 
         let timeout_val = timeout_duration.unwrap_or(self.config.request_timeout);
-        
+
         // Send request with retries
         self.send_request_with_retries(request, timeout_val).await
     }
@@ -530,9 +666,12 @@ impl McpClient {
         timeout_duration: Duration,
     ) -> McpResult<JsonRpcResponse> {
         let mut last_error = None;
-        
+
         for attempt in 0..=self.config.max_retries {
-            match self.send_single_request(request.clone(), timeout_duration).await {
+            match self
+                .send_single_request(request.clone(), timeout_duration)
+                .await
+            {
                 Ok(response) => {
                     if attempt > 0 {
                         self.stats.write().await.retries += attempt as u64;
@@ -541,10 +680,15 @@ impl McpClient {
                 }
                 Err(e) => {
                     last_error = Some(e);
-                    
+
                     if attempt < self.config.max_retries {
                         let delay = self.config.retry_base_delay * 2_u32.pow(attempt);
-                        debug!("Request failed, retrying in {:?} (attempt {} of {})", delay, attempt + 1, self.config.max_retries + 1);
+                        debug!(
+                            "Request failed, retrying in {:?} (attempt {} of {})",
+                            delay,
+                            attempt + 1,
+                            self.config.max_retries + 1
+                        );
                         sleep(delay).await;
                     }
                 }
@@ -561,33 +705,17 @@ impl McpClient {
         timeout_duration: Duration,
     ) -> McpResult<JsonRpcResponse> {
         let request_id = request.id.to_string();
-        let (response_sender, response_receiver) = oneshot::channel();
-        
-        // Store pending request
-        self.pending_requests.write().await.insert(request_id.clone(), response_sender);
+        tracing::debug!("Sending single request with ID: {}", request_id);
 
-        // Send request
-        self.transport.send_request(request, Some(timeout_duration)).await?;
+        // Send request and get response directly from transport
+        let response = self
+            .transport
+            .send_request(request, Some(timeout_duration))
+            .await?;
         self.stats.write().await.requests_sent += 1;
 
-        // Wait for response
-        match timeout(timeout_duration, response_receiver).await {
-            Ok(Ok(response)) => Ok(response),
-            Ok(Err(_)) => {
-                // Channel was closed
-                self.pending_requests.write().await.remove(&request_id);
-                Err(McpError::Protocol(ProtocolError::RequestFailed {
-                    reason: "Response channel closed".to_string(),
-                }))
-            }
-            Err(_) => {
-                // Timeout
-                self.pending_requests.write().await.remove(&request_id);
-                Err(McpError::Protocol(ProtocolError::RequestTimeout {
-                    timeout: timeout_duration,
-                }))
-            }
-        }
+        tracing::debug!("Received response for request ID: {}", response.id);
+        Ok(response)
     }
 }
 
@@ -652,7 +780,8 @@ impl McpClientBuilder {
             })
         })?;
 
-        let notification_handler = self.notification_handler
+        let notification_handler = self
+            .notification_handler
             .unwrap_or_else(|| Box::new(DefaultNotificationHandler));
 
         McpClient::new(transport_config, self.client_config, notification_handler).await
@@ -675,8 +804,10 @@ mod tests {
         let config = TransportConfig::stdio("echo", &[] as &[String]);
         let client_config = ClientConfig::default();
         let handler = Box::new(DefaultNotificationHandler);
-        let client = McpClient::new(config, client_config, handler).await.unwrap();
-        
+        let client = McpClient::new(config, client_config, handler)
+            .await
+            .unwrap();
+
         assert_eq!(client.state().await, ClientState::Disconnected);
     }
 
@@ -684,7 +815,7 @@ mod tests {
     async fn test_client_with_defaults() {
         let config = TransportConfig::stdio("echo", &[] as &[String]);
         let client = McpClient::with_defaults(config).await.unwrap();
-        
+
         assert_eq!(client.state().await, ClientState::Disconnected);
         assert!(!client.is_ready().await);
     }
@@ -696,4 +827,4 @@ mod tests {
         assert_eq!(config.init_timeout, Duration::from_secs(10));
         assert_eq!(config.max_retries, 3);
     }
-} 
+}

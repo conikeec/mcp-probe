@@ -54,19 +54,19 @@ pub use config::*;
 pub use factory::*;
 
 use crate::error::{McpResult, TransportError};
-use crate::messages::{JsonRpcMessage, JsonRpcRequest, JsonRpcResponse, JsonRpcNotification};
+use crate::messages::{JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use async_trait::async_trait;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
 /// Core transport trait for MCP communication.
-/// 
+///
 /// This trait defines the interface that all MCP transports must implement.
 /// It provides async methods for sending/receiving messages and managing
 /// the transport connection lifecycle.
-/// 
+///
 /// # Design Principles
-/// 
+///
 /// - **Bidirectional**: Support both client-to-server and server-to-client messages
 /// - **Message-oriented**: Work with high-level MCP messages, not raw bytes
 /// - **Async**: All operations are async for maximum concurrency
@@ -75,13 +75,13 @@ use tokio::sync::mpsc;
 #[async_trait]
 pub trait Transport: Send + Sync {
     /// Connect to the MCP server.
-    /// 
+    ///
     /// This establishes the underlying connection (process spawn, HTTP connection, etc.)
     /// but does not perform MCP protocol initialization.
     async fn connect(&mut self) -> McpResult<()>;
 
     /// Disconnect from the MCP server.
-    /// 
+    ///
     /// This cleanly closes the connection and releases any resources.
     /// Should be called when the MCP session is complete.
     async fn disconnect(&mut self) -> McpResult<()>;
@@ -90,17 +90,17 @@ pub trait Transport: Send + Sync {
     fn is_connected(&self) -> bool;
 
     /// Send a JSON-RPC request and wait for the response.
-    /// 
+    ///
     /// This is the primary method for client-initiated request/response interactions.
     /// The method handles request correlation and timeout management.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `request` - The JSON-RPC request to send
     /// * `timeout` - Optional timeout for the request (uses default if None)
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// The corresponding JSON-RPC response, or an error if the request fails.
     async fn send_request(
         &mut self,
@@ -109,28 +109,28 @@ pub trait Transport: Send + Sync {
     ) -> McpResult<JsonRpcResponse>;
 
     /// Send a JSON-RPC notification (fire-and-forget).
-    /// 
+    ///
     /// Notifications don't expect responses and are used for events,
     /// logging, and other one-way communications.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `notification` - The JSON-RPC notification to send
     async fn send_notification(&mut self, notification: JsonRpcNotification) -> McpResult<()>;
 
     /// Receive the next message from the server.
-    /// 
+    ///
     /// This method blocks until a message is received or an error occurs.
     /// It can return requests (from server to client), responses (to previous
     /// client requests), or notifications.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `timeout` - Optional timeout for receiving (blocks indefinitely if None)
     async fn receive_message(&mut self, timeout: Option<Duration>) -> McpResult<JsonRpcMessage>;
 
     /// Get transport-specific metadata and statistics.
-    /// 
+    ///
     /// This can include connection info, performance metrics, error counts, etc.
     /// The exact contents depend on the transport implementation.
     fn get_info(&self) -> TransportInfo;
@@ -140,35 +140,35 @@ pub trait Transport: Send + Sync {
 }
 
 /// Transport information and statistics.
-/// 
+///
 /// This structure provides insight into the transport's current state,
 /// performance characteristics, and any relevant metadata.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TransportInfo {
     /// Type of transport (stdio, http-sse, http-stream)
     pub transport_type: String,
-    
+
     /// Whether the transport is currently connected
     pub connected: bool,
-    
+
     /// Connection establishment time (if connected)
     pub connected_since: Option<std::time::SystemTime>,
-    
+
     /// Number of requests sent
     pub requests_sent: u64,
-    
+
     /// Number of responses received
     pub responses_received: u64,
-    
+
     /// Number of notifications sent
     pub notifications_sent: u64,
-    
+
     /// Number of notifications received
     pub notifications_received: u64,
-    
+
     /// Number of errors encountered
     pub errors: u64,
-    
+
     /// Transport-specific metadata
     pub metadata: std::collections::HashMap<String, serde_json::Value>,
 }
@@ -242,19 +242,19 @@ impl TransportInfo {
 }
 
 /// Message sender for internal transport communication.
-/// 
+///
 /// This type is used internally by transport implementations to send
 /// messages between different async tasks (e.g., reader and writer tasks).
 pub type MessageSender = mpsc::UnboundedSender<JsonRpcMessage>;
 
 /// Message receiver for internal transport communication.
-/// 
+///
 /// This type is used internally by transport implementations to receive
 /// messages from different async tasks.
 pub type MessageReceiver = mpsc::UnboundedReceiver<JsonRpcMessage>;
 
 /// Helper trait for transport implementations.
-/// 
+///
 /// This trait provides common functionality that most transport implementations
 /// will need, such as message correlation, timeout handling, etc.
 pub trait TransportHelper {
@@ -276,7 +276,8 @@ pub trait TransportHelper {
                     return Err(TransportError::InvalidConfig {
                         transport_type: "generic".to_string(),
                         reason: format!("Invalid jsonrpc version: {}", req.jsonrpc),
-                    }.into());
+                    }
+                    .into());
                 }
             }
             JsonRpcMessage::Response(resp) => {
@@ -284,7 +285,8 @@ pub trait TransportHelper {
                     return Err(TransportError::InvalidConfig {
                         transport_type: "generic".to_string(),
                         reason: format!("Invalid jsonrpc version: {}", resp.jsonrpc),
-                    }.into());
+                    }
+                    .into());
                 }
             }
             JsonRpcMessage::Notification(notif) => {
@@ -292,7 +294,8 @@ pub trait TransportHelper {
                     return Err(TransportError::InvalidConfig {
                         transport_type: "generic".to_string(),
                         reason: format!("Invalid jsonrpc version: {}", notif.jsonrpc),
-                    }.into());
+                    }
+                    .into());
                 }
             }
         }
@@ -323,7 +326,7 @@ mod tests {
     fn test_transport_info_metadata() {
         let mut info = TransportInfo::new("test");
         info.add_metadata("version", serde_json::json!("1.0.0"));
-        
+
         assert_eq!(
             info.metadata.get("version").unwrap(),
             &serde_json::json!("1.0.0")
@@ -343,4 +346,4 @@ mod tests {
         info.mark_disconnected();
         assert!(info.connection_duration().is_none());
     }
-} 
+}

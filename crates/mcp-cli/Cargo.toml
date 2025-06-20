@@ -34,11 +34,7 @@ ratatui = { workspace = true }
 crossterm = { workspace = true }
 tui-textarea = { workspace = true }
 
-# Hypershell for flow states
-cgp = { workspace = true }
-hypershell = { workspace = true }
-hypershell-components = { workspace = true }
-hypershell-tokio-components = { workspace = true }
+# Flow states handled by internal state machine
 
 # Serialization and config
 serde = { workspace = true }

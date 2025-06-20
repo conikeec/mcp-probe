@@ -43,16 +43,12 @@ hyper-tungstenite = "0.13"
 
 # CLI and TUI
 clap = { version = "4.4", features = ["derive", "env"] }
-ratatui = "0.24"
-crossterm = "0.27"
-tui-textarea = "0.4"
+ratatui = "0.28"
+crossterm = "0.28"
+tui-textarea = "0.6"
 dialoguer = { version = "0.11", features = ["completion"] }
 
-# Hypershell integration for flow states
-cgp = "0.4.1"
-hypershell = "0.1"
-hypershell-components = "0.1"
-hypershell-tokio-components = "0.1"
+# Flow states handled by internal state machine
 
 # Error handling and logging
 thiserror = "1.0"

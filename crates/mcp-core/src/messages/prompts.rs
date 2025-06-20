@@ -23,7 +23,7 @@ pub struct ListPromptsRequest {
 pub struct ListPromptsResponse {
     /// List of available prompts
     pub prompts: Vec<Prompt>,
-    
+
     /// Optional cursor for next page of results
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
@@ -34,10 +34,10 @@ pub struct ListPromptsResponse {
 pub struct Prompt {
     /// Unique name of the prompt
     pub name: String,
-    
+
     /// Human-readable description of the prompt
     pub description: String,
-    
+
     /// JSON Schema for the prompt's arguments
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Value>,
@@ -65,7 +65,7 @@ impl Prompt {
 pub struct GetPromptRequest {
     /// Name of the prompt to get
     pub name: String,
-    
+
     /// Arguments to substitute in the prompt
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Value>,
@@ -77,7 +77,7 @@ pub struct GetPromptResponse {
     /// Description of the prompt
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    
+
     /// Generated messages for the prompt
     #[serde(default)]
     pub messages: Vec<PromptMessage>,
@@ -88,7 +88,7 @@ pub struct GetPromptResponse {
 pub struct PromptMessage {
     /// Role of the message (system, user, assistant)
     pub role: MessageRole,
-    
+
     /// Content of the message
     pub content: PromptContent,
 }
@@ -137,18 +137,18 @@ pub enum PromptContent {
         /// The text content
         text: String,
     },
-    
+
     /// Image content
     #[serde(rename = "image")]
     Image {
         /// Image data (base64 encoded or URL)
         data: String,
-        
+
         /// MIME type of the image
         #[serde(rename = "mimeType")]
         mime_type: String,
     },
-    
+
     /// Resource reference
     #[serde(rename = "resource")]
     Resource {
@@ -160,9 +160,7 @@ pub enum PromptContent {
 impl PromptContent {
     /// Create text content.
     pub fn text(text: impl Into<String>) -> Self {
-        Self::Text {
-            text: text.into(),
-        }
+        Self::Text { text: text.into() }
     }
 
     /// Create image content.
@@ -199,7 +197,7 @@ impl PromptContent {
 pub struct ResourceReference {
     /// URI of the resource
     pub uri: String,
-    
+
     /// Optional description of the resource
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
@@ -233,8 +231,8 @@ mod tests {
 
     #[test]
     fn test_prompt_creation() {
-        let prompt = Prompt::new("code_review", "Review code for best practices")
-            .with_arguments(json!({
+        let prompt =
+            Prompt::new("code_review", "Review code for best practices").with_arguments(json!({
                 "type": "object",
                 "properties": {
                     "language": {"type": "string"},
@@ -319,4 +317,4 @@ mod tests {
         let json = serde_json::to_string(&assistant_role).unwrap();
         assert_eq!(json, "\"assistant\"");
     }
-} 
+}

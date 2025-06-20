@@ -66,23 +66,22 @@
 #![warn(clippy::all)]
 #![allow(clippy::module_name_repetitions)]
 
+pub mod client;
 pub mod error;
 pub mod messages;
 pub mod transport;
-pub mod client;
 
 // Re-export commonly used types for convenience
+pub use client::{ClientConfig, ClientState, ClientStats, McpClient, ServerInfo};
 pub use error::{McpError, McpResult};
 pub use messages::{
-    JsonRpcMessage, JsonRpcRequest, JsonRpcResponse, JsonRpcNotification,
-    ProtocolVersion, Capabilities, Implementation,
-    InitializeRequest, InitializeResponse, InitializedNotification,
+    Capabilities, Implementation, InitializeRequest, InitializeResponse, InitializedNotification,
+    JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, ProtocolVersion,
 };
 pub use transport::{Transport, TransportConfig, TransportFactory, TransportInfo};
-pub use client::{McpClient, ClientConfig, ClientState, ServerInfo, ClientStats};
 
 /// Current version of the mcp-core library
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Current MCP protocol version supported by this library
-pub const PROTOCOL_VERSION: &str = "2024-11-05"; 
+pub const PROTOCOL_VERSION: &str = "2024-11-05";

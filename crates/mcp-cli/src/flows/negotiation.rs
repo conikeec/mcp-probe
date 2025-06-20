@@ -1,1 +1,1 @@
-//! Negotiation-specific types and utilities for MCP flows 
+//! Negotiation-specific types and utilities for MCP flows

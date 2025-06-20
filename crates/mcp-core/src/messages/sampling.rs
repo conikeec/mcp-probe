@@ -11,7 +11,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// Request from server to client for LLM completion.
-/// 
+///
 /// This allows MCP servers to request LLM completions from the client,
 /// enabling servers to leverage the client's LLM capabilities.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,31 +25,31 @@ pub struct CompleteRequest {
 pub struct CompletionArgument {
     /// Messages for the completion
     pub messages: Vec<SamplingMessage>,
-    
+
     /// Optional model selection
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_preferences: Option<ModelPreferences>,
-    
+
     /// System prompt for the completion
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_prompt: Option<String>,
-    
+
     /// Include context about tools available to the model
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_context: Option<String>,
-    
+
     /// Temperature for sampling (0.0 to 1.0)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f64>,
-    
+
     /// Maximum number of tokens to generate
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<i32>,
-    
+
     /// Stop sequences for completion
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_sequences: Option<Vec<String>>,
-    
+
     /// Additional metadata for the request
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
@@ -113,15 +113,15 @@ pub struct ModelPreferences {
     /// Preferred model names in order of preference
     #[serde(skip_serializing_if = "Option::is_none")]
     pub models: Option<Vec<String>>,
-    
+
     /// Minimum cost tier acceptable
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cost_priority: Option<CostPriority>,
-    
+
     /// Minimum speed tier acceptable
     #[serde(skip_serializing_if = "Option::is_none")]
     pub speed_priority: Option<SpeedPriority>,
-    
+
     /// Minimum intelligence tier acceptable
     #[serde(skip_serializing_if = "Option::is_none")]
     pub intelligence_priority: Option<IntelligencePriority>,
@@ -210,7 +210,7 @@ pub enum IntelligencePriority {
 pub struct SamplingMessage {
     /// Role of the message
     pub role: MessageRole,
-    
+
     /// Content of the message
     pub content: SamplingContent,
 }
@@ -259,13 +259,13 @@ pub enum SamplingContent {
         /// The text content
         text: String,
     },
-    
+
     /// Image content
     #[serde(rename = "image")]
     Image {
         /// Image data (base64 or URL)
         data: String,
-        
+
         /// MIME type of the image
         #[serde(rename = "mimeType")]
         mime_type: String,
@@ -275,9 +275,7 @@ pub enum SamplingContent {
 impl SamplingContent {
     /// Create text content.
     pub fn text(text: impl Into<String>) -> Self {
-        Self::Text {
-            text: text.into(),
-        }
+        Self::Text { text: text.into() }
     }
 
     /// Create image content.
@@ -294,11 +292,11 @@ impl SamplingContent {
 pub struct CompleteResponse {
     /// Completion result
     pub completion: CompletionResult,
-    
+
     /// Model used for the completion
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
-    
+
     /// Stop reason for the completion
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_reason: Option<StopReason>,
@@ -319,9 +317,7 @@ pub enum CompletionResult {
 impl CompletionResult {
     /// Create a text completion result.
     pub fn text(text: impl Into<String>) -> Self {
-        Self::Text {
-            text: text.into(),
-        }
+        Self::Text { text: text.into() }
     }
 }
 
@@ -371,10 +367,16 @@ mod tests {
             .with_speed_priority(SpeedPriority::High)
             .with_intelligence_priority(IntelligencePriority::High);
 
-        assert_eq!(prefs.models, Some(vec!["gpt-4".to_string(), "claude-3".to_string()]));
+        assert_eq!(
+            prefs.models,
+            Some(vec!["gpt-4".to_string(), "claude-3".to_string()])
+        );
         assert_eq!(prefs.cost_priority, Some(CostPriority::Medium));
         assert_eq!(prefs.speed_priority, Some(SpeedPriority::High));
-        assert_eq!(prefs.intelligence_priority, Some(IntelligencePriority::High));
+        assert_eq!(
+            prefs.intelligence_priority,
+            Some(IntelligencePriority::High)
+        );
     }
 
     #[test]
@@ -435,7 +437,7 @@ mod tests {
 
         let expected = [
             "\"end_turn\"",
-            "\"max_tokens\"", 
+            "\"max_tokens\"",
             "\"stop_sequence\"",
             "\"tool_use\"",
         ];
@@ -444,4 +446,4 @@ mod tests {
             assert_eq!(serde_json::to_string(reason).unwrap(), *expected);
         }
     }
-} 
+}

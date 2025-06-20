@@ -39,20 +39,20 @@ use serde_json::Value;
 use uuid::Uuid;
 
 /// JSON-RPC 2.0 request message.
-/// 
+///
 /// Represents a request from client to server that expects a response.
 /// All MCP operations (except notifications) use this message type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JsonRpcRequest {
     /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
-    
+
     /// Unique identifier for request/response correlation
     pub id: RequestId,
-    
+
     /// Method name being invoked
     pub method: String,
-    
+
     /// Parameters for the method (can be object or array)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
@@ -60,13 +60,13 @@ pub struct JsonRpcRequest {
 
 impl JsonRpcRequest {
     /// Create a new JSON-RPC request with the given ID, method, and parameters.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcRequest;
     /// use serde_json::json;
-    /// 
+    ///
     /// let request = JsonRpcRequest::new(
     ///     "1".to_string(),
     ///     "initialize".to_string(),
@@ -83,12 +83,12 @@ impl JsonRpcRequest {
     }
 
     /// Create a new JSON-RPC request without parameters.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcRequest;
-    /// 
+    ///
     /// let request = JsonRpcRequest::without_params("1", "tools/list");
     /// ```
     pub fn without_params(id: impl Into<RequestId>, method: impl Into<String>) -> Self {
@@ -101,7 +101,7 @@ impl JsonRpcRequest {
     }
 
     /// Generate a new request with a random UUID as the ID.
-    /// 
+    ///
     /// This is useful when you don't need to track specific request IDs.
     pub fn with_random_id(method: impl Into<String>, params: Value) -> Self {
         Self::new(Uuid::new_v4().to_string(), method, params)
@@ -113,26 +113,26 @@ impl JsonRpcRequest {
     }
 
     /// Get the parameters as a specific type.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcRequest;
     /// use serde_json::json;
     /// use serde::{Deserialize, Serialize};
-    /// 
+    ///
     /// #[derive(Deserialize, Serialize)]
     /// struct InitParams {
     ///     #[serde(rename = "protocolVersion")]
     ///     protocol_version: String,
     /// }
-    /// 
+    ///
     /// let request = JsonRpcRequest::new(
     ///     "1",
-    ///     "initialize", 
+    ///     "initialize",
     ///     json!({"protocolVersion": "2024-11-05"})
     /// );
-    /// 
+    ///
     /// let params: InitParams = request.params_as().unwrap();
     /// assert_eq!(params.protocol_version, "2024-11-05");
     /// ```
@@ -148,21 +148,21 @@ impl JsonRpcRequest {
 }
 
 /// JSON-RPC 2.0 response message.
-/// 
+///
 /// Represents a response from server to client for a previous request.
 /// Can contain either a successful result or an error.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JsonRpcResponse {
     /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
-    
+
     /// ID from the corresponding request
     pub id: RequestId,
-    
+
     /// Success result (mutually exclusive with error)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
-    
+
     /// Error result (mutually exclusive with result)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<JsonRpcError>,
@@ -170,13 +170,13 @@ pub struct JsonRpcResponse {
 
 impl JsonRpcResponse {
     /// Create a successful response with the given result.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcResponse;
     /// use serde_json::json;
-    /// 
+    ///
     /// let response = JsonRpcResponse::success("1", json!({"status": "ok"}));
     /// ```
     pub fn success(id: impl Into<RequestId>, result: Value) -> Self {
@@ -189,12 +189,12 @@ impl JsonRpcResponse {
     }
 
     /// Create an error response with the given error.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::{JsonRpcResponse, JsonRpcError};
-    /// 
+    ///
     /// let response = JsonRpcResponse::error(
     ///     "1",
     ///     JsonRpcError::method_not_found("unknown_method"),
@@ -220,7 +220,7 @@ impl JsonRpcResponse {
     }
 
     /// Get the result as a specific type.
-    /// 
+    ///
     /// Returns an error if the response is an error response or if
     /// deserialization fails.
     pub fn result_as<T>(&self) -> Result<T, Box<dyn std::error::Error + Send + Sync>>
@@ -228,31 +228,25 @@ impl JsonRpcResponse {
         T: for<'de> Deserialize<'de>,
     {
         match (&self.result, &self.error) {
-            (Some(result), None) => {
-                Ok(serde_json::from_value(result.clone())?)
-            }
-            (None, Some(error)) => {
-                Err(format!("JSON-RPC error: {}", error).into())
-            }
-            _ => {
-                Err("Invalid response: both result and error are present or missing".into())
-            }
+            (Some(result), None) => Ok(serde_json::from_value(result.clone())?),
+            (None, Some(error)) => Err(format!("JSON-RPC error: {}", error).into()),
+            _ => Err("Invalid response: both result and error are present or missing".into()),
         }
     }
 }
 
 /// JSON-RPC 2.0 notification message.
-/// 
+///
 /// Represents a one-way message that doesn't expect a response.
 /// Used for events, logging, and other fire-and-forget communications.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JsonRpcNotification {
     /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
-    
+
     /// Method name being invoked
     pub method: String,
-    
+
     /// Parameters for the method (can be object or array)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
@@ -260,13 +254,13 @@ pub struct JsonRpcNotification {
 
 impl JsonRpcNotification {
     /// Create a new JSON-RPC notification with the given method and parameters.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcNotification;
     /// use serde_json::json;
-    /// 
+    ///
     /// let notification = JsonRpcNotification::new(
     ///     "notifications/cancelled",
     ///     json!({"requestId": "1"}),
@@ -281,12 +275,12 @@ impl JsonRpcNotification {
     }
 
     /// Create a new JSON-RPC notification without parameters.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcNotification;
-    /// 
+    ///
     /// let notification = JsonRpcNotification::without_params("ping");
     /// ```
     pub fn without_params(method: impl Into<String>) -> Self {
@@ -315,17 +309,17 @@ impl JsonRpcNotification {
 }
 
 /// JSON-RPC 2.0 error object.
-/// 
+///
 /// Represents an error that occurred during request processing.
 /// Includes standard error codes and optional additional data.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JsonRpcError {
     /// Numeric error code
     pub code: i32,
-    
+
     /// Human-readable error message
     pub message: String,
-    
+
     /// Additional error data (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
@@ -333,13 +327,13 @@ pub struct JsonRpcError {
 
 impl JsonRpcError {
     /// Create a new JSON-RPC error.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcError;
     /// use serde_json::json;
-    /// 
+    ///
     /// let error = JsonRpcError::new(-32000, "Custom error", Some(json!({"details": "More info"})));
     /// ```
     pub fn new(code: i32, message: impl Into<String>, data: Option<Value>) -> Self {
@@ -351,53 +345,68 @@ impl JsonRpcError {
     }
 
     /// Create a "Parse error" (-32700).
-    /// 
+    ///
     /// Used when the JSON cannot be parsed.
     pub fn parse_error() -> Self {
         Self::new(-32700, "Parse error", None)
     }
 
     /// Create an "Invalid Request" error (-32600).
-    /// 
+    ///
     /// Used when the request is not a valid JSON-RPC request.
     pub fn invalid_request(details: impl Into<String>) -> Self {
-        Self::new(-32600, "Invalid Request", Some(Value::String(details.into())))
+        Self::new(
+            -32600,
+            "Invalid Request",
+            Some(Value::String(details.into())),
+        )
     }
 
     /// Create a "Method not found" error (-32601).
-    /// 
+    ///
     /// Used when the requested method doesn't exist.
     pub fn method_not_found(method: impl Into<String>) -> Self {
         Self::new(
             -32601,
             "Method not found",
-            Some(Value::String(format!("Method '{}' not found", method.into()))),
+            Some(Value::String(format!(
+                "Method '{}' not found",
+                method.into()
+            ))),
         )
     }
 
     /// Create an "Invalid params" error (-32602).
-    /// 
+    ///
     /// Used when method parameters are invalid.
     pub fn invalid_params(details: impl Into<String>) -> Self {
-        Self::new(-32602, "Invalid params", Some(Value::String(details.into())))
+        Self::new(
+            -32602,
+            "Invalid params",
+            Some(Value::String(details.into())),
+        )
     }
 
     /// Create an "Internal error" (-32603).
-    /// 
+    ///
     /// Used for server-side internal errors.
     pub fn internal_error(details: impl Into<String>) -> Self {
-        Self::new(-32603, "Internal error", Some(Value::String(details.into())))
+        Self::new(
+            -32603,
+            "Internal error",
+            Some(Value::String(details.into())),
+        )
     }
 
     /// Create a custom application error.
-    /// 
+    ///
     /// Custom error codes should be in the range -32000 to -32099.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::messages::core::JsonRpcError;
-    /// 
+    ///
     /// let error = JsonRpcError::application_error(
     ///     -32000,
     ///     "Tool execution failed",
@@ -436,7 +445,7 @@ impl std::fmt::Display for JsonRpcError {
 impl std::error::Error for JsonRpcError {}
 
 /// Request ID for JSON-RPC messages.
-/// 
+///
 /// Can be a string, number, or null according to JSON-RPC 2.0 specification.
 /// MCP typically uses string IDs for better traceability.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -485,7 +494,7 @@ impl std::fmt::Display for RequestId {
 }
 
 /// Enum for any JSON-RPC message type.
-/// 
+///
 /// This is useful for generic message handling where you need to
 /// differentiate between requests, responses, and notifications.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -553,7 +562,7 @@ mod tests {
     #[test]
     fn test_request_creation() {
         let request = JsonRpcRequest::new("1", "test_method", json!({"param": "value"}));
-        
+
         assert_eq!(request.jsonrpc, "2.0");
         assert_eq!(request.id, RequestId::String("1".to_string()));
         assert_eq!(request.method, "test_method");
@@ -563,7 +572,7 @@ mod tests {
     #[test]
     fn test_request_without_params() {
         let request = JsonRpcRequest::without_params("1", "test_method");
-        
+
         assert!(!request.has_params());
         assert_eq!(request.params, None);
     }
@@ -571,7 +580,7 @@ mod tests {
     #[test]
     fn test_success_response() {
         let response = JsonRpcResponse::success("1", json!({"result": "ok"}));
-        
+
         assert!(response.is_success());
         assert!(!response.is_error());
         assert_eq!(response.id, RequestId::String("1".to_string()));
@@ -581,7 +590,7 @@ mod tests {
     fn test_error_response() {
         let error = JsonRpcError::method_not_found("unknown");
         let response = JsonRpcResponse::error("1", error);
-        
+
         assert!(!response.is_success());
         assert!(response.is_error());
         assert_eq!(response.error.as_ref().unwrap().code, -32601);
@@ -590,7 +599,7 @@ mod tests {
     #[test]
     fn test_notification_creation() {
         let notification = JsonRpcNotification::new("event", json!({"data": "value"}));
-        
+
         assert_eq!(notification.method, "event");
         assert!(notification.has_params());
     }
@@ -628,12 +637,13 @@ mod tests {
     #[test]
     fn test_generic_message_handling() {
         let request = JsonRpcMessage::Request(JsonRpcRequest::new("1", "test", json!({})));
-        let notification = JsonRpcMessage::Notification(JsonRpcNotification::new("event", json!({})));
-        
+        let notification =
+            JsonRpcMessage::Notification(JsonRpcNotification::new("event", json!({})));
+
         assert_eq!(request.method(), Some("test"));
         assert_eq!(notification.method(), Some("event"));
-        
+
         assert!(request.expects_response());
         assert!(!notification.expects_response());
     }
-} 
+}

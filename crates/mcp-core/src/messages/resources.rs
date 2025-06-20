@@ -23,7 +23,7 @@ pub struct ListResourcesRequest {
 pub struct ListResourcesResponse {
     /// List of available resources
     pub resources: Vec<Resource>,
-    
+
     /// Optional cursor for next page of results
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
@@ -34,14 +34,14 @@ pub struct ListResourcesResponse {
 pub struct Resource {
     /// Unique URI identifying the resource
     pub uri: String,
-    
+
     /// Human-readable name of the resource
     pub name: String,
-    
+
     /// Description of what the resource contains
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    
+
     /// MIME type of the resource content
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mime_type: Option<String>,
@@ -95,25 +95,25 @@ pub enum ResourceContent {
     Text {
         /// The text content
         text: String,
-        
+
         /// URI of the resource
         uri: String,
-        
+
         /// MIME type of the content
         #[serde(rename = "mimeType")]
         #[serde(skip_serializing_if = "Option::is_none")]
         mime_type: Option<String>,
     },
-    
+
     /// Binary content (base64 encoded)
     #[serde(rename = "blob")]
     Blob {
         /// Base64 encoded binary data
         blob: String,
-        
+
         /// URI of the resource
         uri: String,
-        
+
         /// MIME type of the content
         #[serde(rename = "mimeType")]
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -202,7 +202,7 @@ pub struct UnsubscribeRequest {
 pub struct ResourceUpdatedNotification {
     /// URI of the updated resource
     pub uri: String,
-    
+
     /// Additional metadata about the update
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
@@ -283,11 +283,8 @@ mod tests {
 
     #[test]
     fn test_resource_content_text() {
-        let content = ResourceContent::text_with_mime_type(
-            "file:///test.txt",
-            "Hello world",
-            "text/plain",
-        );
+        let content =
+            ResourceContent::text_with_mime_type("file:///test.txt", "Hello world", "text/plain");
 
         let json = serde_json::to_value(&content).unwrap();
         assert_eq!(json["type"], "text");
@@ -299,11 +296,8 @@ mod tests {
 
     #[test]
     fn test_resource_content_blob() {
-        let content = ResourceContent::blob_with_mime_type(
-            "file:///test.png",
-            "base64data",
-            "image/png",
-        );
+        let content =
+            ResourceContent::blob_with_mime_type("file:///test.png", "base64data", "image/png");
 
         let json = serde_json::to_value(&content).unwrap();
         assert_eq!(json["type"], "blob");
@@ -324,4 +318,4 @@ mod tests {
             Some(&json!("2024-01-01T00:00:00Z"))
         );
     }
-} 
+}

@@ -35,7 +35,7 @@ use std::time::Duration;
 use url::Url;
 
 /// Transport configuration enum supporting all MCP transport types.
-/// 
+///
 /// This enum provides type-safe configuration for different transport mechanisms,
 /// ensuring that each transport gets the configuration parameters it needs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,22 +43,22 @@ use url::Url;
 pub enum TransportConfig {
     /// Local process communication via stdio
     Stdio(StdioConfig),
-    
+
     /// Remote HTTP server with Server-Sent Events
     HttpSse(HttpSseConfig),
-    
+
     /// Full-duplex HTTP streaming
     HttpStream(HttpStreamConfig),
 }
 
 impl TransportConfig {
     /// Create a new stdio transport configuration.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::transport::TransportConfig;
-    /// 
+    ///
     /// let config = TransportConfig::stdio("python", &["server.py"]);
     /// ```
     pub fn stdio(command: impl Into<String>, args: &[impl ToString]) -> Self {
@@ -72,16 +72,18 @@ impl TransportConfig {
     }
 
     /// Create a new HTTP+SSE transport configuration.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::transport::TransportConfig;
-    /// 
+    ///
     /// let config = TransportConfig::http_sse("https://api.example.com/mcp").unwrap();
     /// ```
     pub fn http_sse(base_url: impl AsRef<str>) -> McpResult<Self> {
-        let url = base_url.as_ref().parse()
+        let url = base_url
+            .as_ref()
+            .parse()
             .map_err(|e| ConfigError::InvalidValue {
                 parameter: "base_url".to_string(),
                 value: base_url.as_ref().to_string(),
@@ -97,16 +99,18 @@ impl TransportConfig {
     }
 
     /// Create a new HTTP streaming transport configuration.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::transport::TransportConfig;
-    /// 
+    ///
     /// let config = TransportConfig::http_stream("https://stream.example.com/mcp").unwrap();
     /// ```
     pub fn http_stream(base_url: impl AsRef<str>) -> McpResult<Self> {
-        let url = base_url.as_ref().parse()
+        let url = base_url
+            .as_ref()
+            .parse()
             .map_err(|e| ConfigError::InvalidValue {
                 parameter: "base_url".to_string(),
                 value: base_url.as_ref().to_string(),
@@ -142,44 +146,47 @@ impl TransportConfig {
     }
 
     /// Load configuration from a file.
-    /// 
+    ///
     /// Supports JSON, YAML, and TOML formats based on file extension.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::transport::TransportConfig;
-    /// 
+    ///
     /// let config = TransportConfig::from_file("config.json")?;
     /// # Ok::<(), mcp_core::error::McpError>(())
     /// ```
     pub fn from_file(path: impl AsRef<std::path::Path>) -> McpResult<Self> {
         let path = path.as_ref();
-        let content = std::fs::read_to_string(path)
-            .map_err(|_e| ConfigError::FileNotFound {
-                path: path.display().to_string(),
-            })?;
+        let content = std::fs::read_to_string(path).map_err(|_e| ConfigError::FileNotFound {
+            path: path.display().to_string(),
+        })?;
 
         let config: Self = match path.extension().and_then(|ext| ext.to_str()) {
-            Some("json") => serde_json::from_str(&content)
-                .map_err(|e| ConfigError::InvalidFormat {
+            Some("json") => {
+                serde_json::from_str(&content).map_err(|e| ConfigError::InvalidFormat {
                     path: path.display().to_string(),
                     reason: e.to_string(),
-                })?,
-            Some("yaml") | Some("yml") => serde_yaml::from_str(&content)
-                .map_err(|e| ConfigError::InvalidFormat {
+                })?
+            }
+            Some("yaml") | Some("yml") => {
+                serde_yaml::from_str(&content).map_err(|e| ConfigError::InvalidFormat {
                     path: path.display().to_string(),
                     reason: e.to_string(),
-                })?,
-            Some("toml") => toml::from_str(&content)
-                .map_err(|e| ConfigError::InvalidFormat {
-                    path: path.display().to_string(),
-                    reason: e.to_string(),
-                })?,
-            _ => return Err(ConfigError::InvalidFormat {
+                })?
+            }
+            Some("toml") => toml::from_str(&content).map_err(|e| ConfigError::InvalidFormat {
                 path: path.display().to_string(),
-                reason: "Unsupported file format. Use .json, .yaml, or .toml".to_string(),
-            }.into()),
+                reason: e.to_string(),
+            })?,
+            _ => {
+                return Err(ConfigError::InvalidFormat {
+                    path: path.display().to_string(),
+                    reason: "Unsupported file format. Use .json, .yaml, or .toml".to_string(),
+                }
+                .into())
+            }
         };
 
         config.validate()?;
@@ -187,12 +194,12 @@ impl TransportConfig {
     }
 
     /// Save configuration to a file.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::transport::TransportConfig;
-    /// 
+    ///
     /// let config = TransportConfig::stdio("python", &["server.py"]);
     /// config.to_file("config.json")?;
     /// # Ok::<(), mcp_core::error::McpError>(())
@@ -200,25 +207,29 @@ impl TransportConfig {
     pub fn to_file(&self, path: impl AsRef<std::path::Path>) -> McpResult<()> {
         let path = path.as_ref();
         let content = match path.extension().and_then(|ext| ext.to_str()) {
-            Some("json") => serde_json::to_string_pretty(self)
-                .map_err(|e| ConfigError::InvalidFormat {
+            Some("json") => {
+                serde_json::to_string_pretty(self).map_err(|e| ConfigError::InvalidFormat {
                     path: path.display().to_string(),
                     reason: e.to_string(),
-                })?,
-            Some("yaml") | Some("yml") => serde_yaml::to_string(self)
-                .map_err(|e| ConfigError::InvalidFormat {
+                })?
+            }
+            Some("yaml") | Some("yml") => {
+                serde_yaml::to_string(self).map_err(|e| ConfigError::InvalidFormat {
                     path: path.display().to_string(),
                     reason: e.to_string(),
-                })?,
-            Some("toml") => toml::to_string(self)
-                .map_err(|e| ConfigError::InvalidFormat {
-                    path: path.display().to_string(),
-                    reason: e.to_string(),
-                })?,
-            _ => return Err(ConfigError::InvalidFormat {
+                })?
+            }
+            Some("toml") => toml::to_string(self).map_err(|e| ConfigError::InvalidFormat {
                 path: path.display().to_string(),
-                reason: "Unsupported file format. Use .json, .yaml, or .toml".to_string(),
-            }.into()),
+                reason: e.to_string(),
+            })?,
+            _ => {
+                return Err(ConfigError::InvalidFormat {
+                    path: path.display().to_string(),
+                    reason: "Unsupported file format. Use .json, .yaml, or .toml".to_string(),
+                }
+                .into())
+            }
         };
 
         std::fs::write(path, content)?;
@@ -228,23 +239,23 @@ impl TransportConfig {
 }
 
 /// Configuration for stdio (local process) transport.
-/// 
+///
 /// This transport spawns a local process and communicates via stdin/stdout.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StdioConfig {
     /// Command to execute (e.g., "python", "/usr/bin/node")
     pub command: String,
-    
+
     /// Arguments to pass to the command
     pub args: Vec<String>,
-    
+
     /// Working directory for the process (optional)
     pub working_dir: Option<String>,
-    
+
     /// Timeout for process operations
     #[serde(with = "humantime_serde")]
     pub timeout: Duration,
-    
+
     /// Environment variables to set for the process
     pub environment: HashMap<String, String>,
 }
@@ -296,7 +307,8 @@ impl StdioConfig {
         if self.command.is_empty() {
             return Err(ConfigError::MissingParameter {
                 parameter: "command".to_string(),
-            }.into());
+            }
+            .into());
         }
 
         if let Some(ref dir) = self.working_dir {
@@ -305,7 +317,8 @@ impl StdioConfig {
                     parameter: "working_dir".to_string(),
                     value: dir.clone(),
                     reason: "Directory does not exist".to_string(),
-                }.into());
+                }
+                .into());
             }
         }
 
@@ -314,21 +327,21 @@ impl StdioConfig {
 }
 
 /// Configuration for HTTP+SSE (Server-Sent Events) transport.
-/// 
+///
 /// This transport uses HTTP requests for client-to-server communication
 /// and Server-Sent Events for server-to-client communication.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HttpSseConfig {
     /// Base URL for the MCP server
     pub base_url: Url,
-    
+
     /// Timeout for HTTP requests
     #[serde(with = "humantime_serde")]
     pub timeout: Duration,
-    
+
     /// Additional HTTP headers to include
     pub headers: HashMap<String, String>,
-    
+
     /// Authentication configuration
     pub auth: Option<AuthConfig>,
 }
@@ -369,7 +382,8 @@ impl HttpSseConfig {
                 parameter: "base_url".to_string(),
                 value: self.base_url.to_string(),
                 reason: "URL must use http or https scheme".to_string(),
-            }.into());
+            }
+            .into());
         }
 
         if let Some(ref auth) = self.auth {
@@ -381,26 +395,26 @@ impl HttpSseConfig {
 }
 
 /// Configuration for HTTP streaming transport.
-/// 
+///
 /// This transport uses full-duplex HTTP streaming for bidirectional communication.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HttpStreamConfig {
     /// Base URL for the MCP server
     pub base_url: Url,
-    
+
     /// Timeout for streaming operations
     #[serde(with = "humantime_serde")]
     pub timeout: Duration,
-    
+
     /// Additional HTTP headers to include
     pub headers: HashMap<String, String>,
-    
+
     /// Authentication configuration
     pub auth: Option<AuthConfig>,
-    
+
     /// Enable compression for the stream
     pub compression: bool,
-    
+
     /// Flow control window size
     pub flow_control_window: u32,
 }
@@ -455,7 +469,8 @@ impl HttpStreamConfig {
                 parameter: "base_url".to_string(),
                 value: self.base_url.to_string(),
                 reason: "URL must use http or https scheme".to_string(),
-            }.into());
+            }
+            .into());
         }
 
         if self.flow_control_window == 0 {
@@ -463,7 +478,8 @@ impl HttpStreamConfig {
                 parameter: "flow_control_window".to_string(),
                 value: self.flow_control_window.to_string(),
                 reason: "Flow control window must be greater than 0".to_string(),
-            }.into());
+            }
+            .into());
         }
 
         if let Some(ref auth) = self.auth {
@@ -475,7 +491,7 @@ impl HttpStreamConfig {
 }
 
 /// Authentication configuration for HTTP-based transports.
-/// 
+///
 /// Supports various authentication schemes including basic auth,
 /// bearer tokens, and OAuth 2.0.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -483,16 +499,11 @@ impl HttpStreamConfig {
 #[allow(missing_docs)]
 pub enum AuthConfig {
     /// HTTP Basic Authentication
-    Basic {
-        username: String,
-        password: String,
-    },
-    
+    Basic { username: String, password: String },
+
     /// Bearer token authentication
-    Bearer {
-        token: String,
-    },
-    
+    Bearer { token: String },
+
     /// OAuth 2.0 authentication
     OAuth {
         client_id: String,
@@ -500,12 +511,9 @@ pub enum AuthConfig {
         token_url: Url,
         scope: Option<String>,
     },
-    
+
     /// Custom header-based authentication
-    Header {
-        name: String,
-        value: String,
-    },
+    Header { name: String, value: String },
 }
 
 impl AuthConfig {
@@ -556,7 +564,8 @@ impl AuthConfig {
                         parameter: "auth".to_string(),
                         value: "basic".to_string(),
                         reason: "Username and password cannot be empty".to_string(),
-                    }.into());
+                    }
+                    .into());
                 }
             }
             Self::Bearer { token } => {
@@ -565,23 +574,31 @@ impl AuthConfig {
                         parameter: "auth".to_string(),
                         value: "bearer".to_string(),
                         reason: "Token cannot be empty".to_string(),
-                    }.into());
+                    }
+                    .into());
                 }
             }
-            Self::OAuth { client_id, client_secret, token_url, .. } => {
+            Self::OAuth {
+                client_id,
+                client_secret,
+                token_url,
+                ..
+            } => {
                 if client_id.is_empty() || client_secret.is_empty() {
                     return Err(ConfigError::InvalidValue {
                         parameter: "auth".to_string(),
                         value: "oauth".to_string(),
                         reason: "Client ID and secret cannot be empty".to_string(),
-                    }.into());
+                    }
+                    .into());
                 }
                 if token_url.scheme() != "https" {
                     return Err(ConfigError::InvalidValue {
                         parameter: "token_url".to_string(),
                         value: token_url.to_string(),
                         reason: "OAuth token URL must use HTTPS".to_string(),
-                    }.into());
+                    }
+                    .into());
                 }
             }
             Self::Header { name, value } => {
@@ -590,10 +607,11 @@ impl AuthConfig {
                         parameter: "auth".to_string(),
                         value: "header".to_string(),
                         reason: "Header name and value cannot be empty".to_string(),
-                    }.into());
+                    }
+                    .into());
                 }
             }
         }
         Ok(())
     }
-} 
+}

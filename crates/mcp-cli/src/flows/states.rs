@@ -1,1 +1,1 @@
-//! State management for MCP negotiation flows 
+//! State management for MCP negotiation flows

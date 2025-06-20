@@ -33,20 +33,20 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Interactive debugging session with an MCP server
     Debug(crate::commands::debug::DebugCommand),
-    
+
     /// Run automated tests against an MCP server
     Test(TestArgs),
-    
+
     /// Manage configuration files and settings
     Config(ConfigArgs),
-    
+
     /// Validate MCP server protocol compliance
     Validate(ValidateArgs),
-    
+
     /// Export session data and generate reports
     Export(ExportArgs),
 }
@@ -88,7 +88,7 @@ pub struct DebugArgs {
 }
 
 /// Arguments for the test command
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub struct TestArgs {
     /// Test suite to run (default: all)
     #[arg(short, long)]
@@ -120,31 +120,31 @@ pub struct TestArgs {
 }
 
 /// Arguments for the config command
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub struct ConfigArgs {
     #[command(subcommand)]
     pub action: ConfigAction,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum ConfigAction {
     /// Generate a new configuration file
     Init {
         /// Output file path
         #[arg(short, long)]
         output: Option<PathBuf>,
-        
+
         /// Configuration template to use
         #[arg(short, long, value_enum, default_value = "full")]
         template: ConfigTemplate,
     },
-    
+
     /// Validate an existing configuration file
     Validate {
         /// Configuration file to validate
         config: PathBuf,
     },
-    
+
     /// Show current configuration
     Show {
         /// Configuration file to display
@@ -153,7 +153,7 @@ pub enum ConfigAction {
 }
 
 /// Arguments for the validate command
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub struct ValidateArgs {
     /// Transport configuration
     #[command(flatten)]
@@ -177,7 +177,7 @@ pub struct ValidateArgs {
 }
 
 /// Arguments for the export command
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub struct ExportArgs {
     /// Session file to export
     pub session: PathBuf,
@@ -200,7 +200,7 @@ pub struct ExportArgs {
 }
 
 /// Transport configuration arguments
-#[derive(Parser)]
+#[derive(Parser, Clone, Debug)]
 pub struct TransportArgs {
     /// Use stdio transport with command
     #[arg(long, value_name = "COMMAND")]
@@ -244,8 +244,7 @@ pub enum OutputFormat {
 }
 
 /// Configuration template types for quick setup
-#[derive(Clone, Debug)]
-#[derive(ValueEnum)]
+#[derive(Clone, Debug, ValueEnum)]
 pub enum ConfigTemplate {
     /// Minimal configuration
     Minimal,
@@ -294,12 +293,8 @@ impl TransportArgs {
                 let args: Vec<String> = self.args.to_vec();
                 Ok(TransportConfig::stdio(command, &args))
             }
-            (None, Some(url), None) => {
-                Ok(TransportConfig::http_sse(url.as_str())?)
-            }
-            (None, None, Some(url)) => {
-                Ok(TransportConfig::http_stream(url.clone())?)
-            }
+            (None, Some(url), None) => Ok(TransportConfig::http_sse(url.as_str())?),
+            (None, None, Some(url)) => Ok(TransportConfig::http_stream(url.clone())?),
             (None, None, None) => {
                 anyhow::bail!("No transport specified. Use --stdio, --http-sse, or --http-stream")
             }
@@ -319,4 +314,4 @@ impl std::fmt::Display for OutputFormat {
             OutputFormat::Text => write!(f, "text"),
         }
     }
-} 
+}

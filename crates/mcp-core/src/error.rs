@@ -2,9 +2,9 @@
 //!
 //! This module provides comprehensive error handling for all MCP operations,
 //! including transport-specific errors, protocol errors, and validation errors.
-//! 
+//!
 //! # Design Philosophy
-//! 
+//!
 //! The error system is designed to be:
 //! - **Informative**: Provide clear, actionable error messages
 //! - **Structured**: Use strongly-typed error variants for programmatic handling  
@@ -12,24 +12,24 @@
 //! - **Debuggable**: Include sufficient context for debugging
 //! - **User-friendly**: Format appropriately for end-user display
 
-use thiserror::Error;
 use std::time::Duration;
+use thiserror::Error;
 
 /// The main error type for all MCP operations.
-/// 
+///
 /// This enum covers all possible error conditions that can occur during
 /// MCP client operations, from transport failures to protocol violations.
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```rust
 /// use mcp_core::error::{McpError, TransportError};
-/// 
+///
 /// let error = McpError::Transport(TransportError::ConnectionFailed {
 ///     transport_type: "stdio".to_string(),
 ///     reason: "Process exited unexpectedly".to_string(),
 /// });
-/// 
+///
 /// println!("Error: {}", error);
 /// ```
 #[derive(Error, Debug)]
@@ -81,14 +81,14 @@ pub enum McpError {
 
     /// Generic errors for cases not covered by specific variants
     #[error("Internal error: {message}")]
-    Internal { 
+    Internal {
         /// Error message
-        message: String 
+        message: String,
     },
 }
 
 /// Transport-specific errors for different MCP transport mechanisms.
-/// 
+///
 /// Each transport type (stdio, HTTP+SSE, HTTP streaming) can have
 /// specific failure modes that need to be handled appropriately.
 #[derive(Error, Debug, Clone)]
@@ -135,10 +135,7 @@ pub enum TransportError {
 
     /// HTTP-specific errors for HTTP transports
     #[error("HTTP error: {status_code} - {reason}")]
-    HttpError {
-        status_code: u16,
-        reason: String,
-    },
+    HttpError { status_code: u16, reason: String },
 
     /// Server-Sent Events specific errors
     #[error("SSE error: {reason}")]
@@ -192,7 +189,7 @@ pub enum TransportError {
 }
 
 /// Protocol-level errors related to MCP message handling.
-/// 
+///
 /// These errors occur when messages don't conform to the MCP specification
 /// or when protocol violations are detected.
 #[derive(Error, Debug, Clone)]
@@ -219,10 +216,7 @@ pub enum ProtocolError {
 
     /// Required field missing from message
     #[error("Missing required field '{field}' in {message_type}")]
-    MissingField {
-        field: String,
-        message_type: String,
-    },
+    MissingField { field: String, message_type: String },
 
     /// Invalid method name for MCP operation
     #[error("Invalid method name: {method}")]
@@ -261,19 +255,15 @@ pub enum ProtocolError {
 
     /// Request failed
     #[error("Request failed: {reason}")]
-    RequestFailed {
-        reason: String,  
-    },
-    
+    RequestFailed { reason: String },
+
     /// Request timed out
     #[error("Request timed out after {timeout:?}")]
-    RequestTimeout {
-        timeout: Duration,
-    },
+    RequestTimeout { timeout: Duration },
 }
 
 /// Validation errors for MCP capabilities and schemas.
-/// 
+///
 /// These errors occur during validation of server capabilities,
 /// tool parameters, resource schemas, etc.
 #[derive(Error, Debug, Clone)]
@@ -281,10 +271,7 @@ pub enum ProtocolError {
 pub enum ValidationError {
     /// Schema validation failed
     #[error("Schema validation failed for {object_type}: {reason}")]
-    SchemaValidation {
-        object_type: String,
-        reason: String,
-    },
+    SchemaValidation { object_type: String, reason: String },
 
     /// Capability not supported by server
     #[error("Capability '{capability}' not supported by server")]
@@ -312,7 +299,7 @@ pub enum ValidationError {
 }
 
 /// Authentication and authorization errors.
-/// 
+///
 /// These errors cover all aspects of authentication and authorization
 /// for different transport types and authentication schemes.
 #[derive(Error, Debug, Clone)]
@@ -347,7 +334,7 @@ pub enum AuthError {
 }
 
 /// Configuration-related errors.
-/// 
+///
 /// These errors occur when configuration files are invalid,
 /// missing required parameters, or contain conflicting settings.
 #[derive(Error, Debug, Clone)]
@@ -383,15 +370,15 @@ pub type McpResult<T> = Result<T, McpError>;
 
 impl McpError {
     /// Create a new internal error with a custom message.
-    /// 
+    ///
     /// This is useful for creating errors from string messages when
     /// a more specific error type is not available.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::error::McpError;
-    /// 
+    ///
     /// let error = McpError::internal("Something went wrong");
     /// ```
     pub fn internal(message: impl Into<String>) -> Self {
@@ -401,13 +388,13 @@ impl McpError {
     }
 
     /// Create a new timeout error.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::error::McpError;
     /// use std::time::Duration;
-    /// 
+    ///
     /// let error = McpError::timeout("server connection", Duration::from_secs(30));
     /// ```
     pub fn timeout(operation: impl Into<String>, duration: std::time::Duration) -> Self {
@@ -418,18 +405,18 @@ impl McpError {
     }
 
     /// Check if this error is retryable.
-    /// 
+    ///
     /// Some errors (like network timeouts) may be worth retrying,
     /// while others (like invalid credentials) are permanent failures.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use mcp_core::error::{McpError, TransportError};
-    /// 
+    ///
     /// let timeout_error = McpError::timeout("connection", std::time::Duration::from_secs(30));
     /// assert!(timeout_error.is_retryable());
-    /// 
+    ///
     /// let auth_error = McpError::Auth(
     ///     mcp_core::error::AuthError::InvalidCredentials {
     ///         auth_type: "Bearer".to_string(),
@@ -453,7 +440,7 @@ impl McpError {
     }
 
     /// Get the error category for this error.
-    /// 
+    ///
     /// This is useful for error reporting and metrics collection.
     pub fn category(&self) -> &'static str {
         match self {
@@ -581,4 +568,4 @@ mod tests {
         };
         assert!(!invalid_config.is_retryable());
     }
-} 
+}

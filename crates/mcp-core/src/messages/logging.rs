@@ -17,7 +17,7 @@ pub enum LogLevel {
     /// Debug level logging (most verbose)
     Debug,
     /// Info level logging
-    Info, 
+    Info,
     /// Notice level logging
     Notice,
     /// Warning level logging
@@ -85,10 +85,10 @@ impl SetLevelRequest {
 pub struct LoggingNotification {
     /// The log level
     pub level: LogLevel,
-    
+
     /// The log message
     pub data: Value,
-    
+
     /// Optional logger name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logger: Option<String>,
@@ -149,10 +149,10 @@ impl LoggingNotification {
 pub struct ProgressNotification {
     /// Progress token for this operation
     pub progress_token: ProgressToken,
-    
+
     /// Current progress (0.0 to 1.0)
     pub progress: f64,
-    
+
     /// Total number of items (if known)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total: Option<u64>,
@@ -169,11 +169,7 @@ impl ProgressNotification {
     }
 
     /// Create a progress notification with a total count.
-    pub fn with_total(
-        progress_token: impl Into<ProgressToken>,
-        progress: f64,
-        total: u64,
-    ) -> Self {
+    pub fn with_total(progress_token: impl Into<ProgressToken>, progress: f64, total: u64) -> Self {
         Self {
             progress_token: progress_token.into(),
             progress,
@@ -230,7 +226,7 @@ impl std::fmt::Display for ProgressToken {
 pub struct ResourceUpdatedNotification {
     /// URI of the updated resource
     pub uri: String,
-    
+
     /// Additional metadata about the update
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
@@ -383,7 +379,10 @@ mod tests {
     #[test]
     fn test_progress_notification() {
         let progress = ProgressNotification::new("operation-1", 0.5);
-        assert_eq!(progress.progress_token, ProgressToken::String("operation-1".to_string()));
+        assert_eq!(
+            progress.progress_token,
+            ProgressToken::String("operation-1".to_string())
+        );
         assert_eq!(progress.progress, 0.5);
         assert_eq!(progress.total, None);
 
@@ -420,4 +419,4 @@ mod tests {
         );
         assert_eq!(notification.metadata.get("size"), Some(&json!(1024)));
     }
-} 
+}

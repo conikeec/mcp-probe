@@ -1,400 +1,638 @@
-# 🔍 MCP Probe
+# 🔍 MCP Probe - Advanced MCP Protocol Debugger & Interactive Client
 
-> **A production-grade Model Context Protocol (MCP) client and debugger built in Rust**
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](Cargo.toml)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Rust Version](https://img.shields.io/badge/rust-1.75%2B-blue.svg)](https://www.rust-lang.org)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-
-MCP Probe bridges the critical gap in the MCP development workflow, providing both a powerful **SDK for building MCP clients** and an **intuitive debugging tool** for validating MCP servers before deploying them to LLM hosts.
-
-## 🎯 **Why MCP Probe?**
-
-The Model Context Protocol (MCP) enables AI applications to securely access external data and tools. However, developing and debugging MCP servers has been challenging due to the lack of proper tooling. MCP Probe solves this by providing:
+**MCP Probe** is a powerful Terminal User Interface (TUI) for debugging, testing, and interacting with Model Context Protocol (MCP) servers. It provides an intuitive, feature-rich alternative to command-line MCP inspectors with real-time protocol analysis, capability discovery, and interactive tool execution.
 
 ```
-Build MCP Server → Debug & Validate → Deploy to LLM Host
-                     ↑
-                 MCP Probe fills this gap
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           🔍 MCP PROBE ARCHITECTURE                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐             │
+│  │   🖥️  TUI        │    │  🔌 Transport   │    │  🔧 MCP Server  │             │
+│  │   Interface     │◄──►│   Layer         │◄──►│   (Any impl.)   │             │
+│  │                 │    │                 │    │                 │             │
+│  │ • Capabilities  │    │ • HTTP/SSE      │    │ • Tools (373+)  │             │
+│  │ • Search        │    │ • WebSocket     │    │ • Resources     │             │
+│  │ • Response View │    │ • STDIO         │    │ • Prompts       │             │
+│  │ • Debugging     │    │ • TCP           │    │                 │             │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘             │
+│           │                       │                       │                     │
+│           ▼                       ▼                       ▼                     │
+│  ┌─────────────────────────────────────────────────────────────────────────────┤
+│  │                     📊 REAL-TIME PROTOCOL ANALYSIS                         │
+│  │  • Message Tracing  • Session Management  • Error Detection               │
+│  │  • JSON Validation  • Response Formatting • Performance Metrics           │
+│  └─────────────────────────────────────────────────────────────────────────────┘
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### **The Problem**
+## 🚀 Why MCP Probe?
 
-- **Complex Protocol**: MCP involves intricate handshakes, capability negotiation, and async messaging
-- **Limited Debugging**: No easy way to test servers before plugging into Claude/ChatGPT/etc.
-- **Transport Complexity**: Supporting stdio, HTTP+SSE, and HTTP streaming requires significant boilerplate
-- **Poor Developer Experience**: Existing tools lack the polish needed for efficient development
+### vs. Traditional MCP Inspector Tools
 
-### **The Solution**
+| Feature                  | Traditional CLI Tools  | MCP Probe TUI                                  |
+| ------------------------ | ---------------------- | ---------------------------------------------- |
+| **Capability Discovery** | Manual JSON parsing    | 🎯 Interactive browsing with search            |
+| **Tool Execution**       | Complex curl commands  | 🖱️ Point-and-click with parameter forms        |
+| **Response Analysis**    | Raw JSON dumps         | 📊 Multi-format viewer (Tree/Summary/Raw)      |
+| **Error Debugging**      | Scattered logs         | 🔍 Centralized error tracking with suggestions |
+| **Session Management**   | Stateless commands     | 💾 Persistent sessions with history            |
+| **Multi-Transport**      | Single transport focus | 🔌 HTTP/SSE, WebSocket, STDIO, TCP support     |
+| **Real-time Monitoring** | Snapshot-based         | ⚡ Live protocol stream analysis               |
 
-MCP Probe provides a **unified toolkit** that serves as both:
+### Key Advantages
 
-1. **🛠️ MCP Client SDK** - Production-ready Rust library for building MCP integrations
-2. **🐛 Interactive Debugger** - TUI-based tool for testing and validating MCP servers
+- **🎮 Interactive**: Navigate 373+ tools with fuzzy search and auto-completion
+- **🔍 Visual**: Color-coded responses, scrollable viewers, progress indicators
+- **📊 Analytical**: Built-in protocol validation, message correlation, timing analysis
+- **🛠️ Developer-Friendly**: Session export, parameter templates, debugging hints
+- **🚀 Fast**: Rust-powered performance with async I/O and efficient TUI rendering
 
-## ✨ **Key Features**
+---
 
-### 🚀 **Complete MCP Implementation**
+## 📦 Installation
 
-- **All Transport Protocols**: stdio, HTTP+SSE, HTTP streaming
-- **Full Protocol Support**: Initialization, tools, resources, prompts, sampling, logging
-- **Async-First Design**: Built on Tokio for high-performance async operations
-- **Type-Safe**: Comprehensive Rust types for all MCP message formats
-
-### 🔧 **Developer-Focused Debugging**
-
-- **Interactive TUI**: Beautiful terminal interface for real-time debugging
-- **Protocol Inspection**: Watch the MCP handshake and message flow in detail
-- **Live Testing**: Execute tools, fetch resources, and test prompts interactively
-- **Validation Engine**: Automatic detection of protocol violations and issues
-- **Export Capabilities**: Save sessions and generate reports for sharing
-
-### 🏗️ **Production-Ready Architecture**
-
-- **Expert Rust Patterns**: Traits, enums, comprehensive error handling
-- **Zero Unsafe Code**: Memory-safe with proper async patterns
-- **Extensive Testing**: 80+ unit tests with full coverage
-- **Rich Documentation**: API docs with examples for every feature
-- **Performance Optimized**: Minimal allocations and efficient async patterns
-
-## 🚀 **Quick Start**
-
-### Installation
-
-```bash
-# Install from crates.io (coming soon)
-cargo install mcp-probe
-
-# Or build from source
-git clone https://github.com/contextgeneric/mcp-probe
-cd mcp-probe
-cargo build --release
-```
-
-### Debug an MCP Server
-
-```bash
-# Debug a Python MCP server
-mcp-probe debug --stdio python server.py
-
-# Debug an HTTP+SSE server
-mcp-probe debug --http-sse https://api.example.com/mcp
-
-# Debug with custom configuration
-mcp-probe debug --config my-server.toml
-```
-
-### Use as a Library
-
-```rust
-use mcp_probe::{McpClient, TransportConfig, Implementation};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create client with stdio transport
-    let config = TransportConfig::stdio("python", &["server.py"]);
-    let mut client = McpClient::with_defaults(config).await?;
-
-    // Connect and initialize
-    let client_info = Implementation {
-        name: "my-app".to_string(),
-        version: "1.0.0".to_string(),
-        metadata: Default::default(),
-    };
-
-    let server_info = client.connect(client_info).await?;
-    println!("Connected to: {}", server_info.implementation.name);
-
-    // List available tools
-    let tools = client.list_tools(None).await?;
-    for tool in tools.tools {
-        println!("Tool: {} - {}", tool.name, tool.description);
-    }
-
-    Ok(())
-}
-```
-
-## 🏛️ **Architecture**
-
-MCP Probe is built with a layered architecture that prioritizes both **ease of use** and **extensibility**:
-
-```
-┌─────────────────────┐
-│   CLI & TUI Layer   │  ← Interactive debugging interface
-├─────────────────────┤
-│   MCP Client API    │  ← High-level MCP operations
-├─────────────────────┤
-│  Protocol Engine    │  ← Message handling & state management
-├─────────────────────┤
-│  Transport Layer    │  ← stdio | HTTP+SSE | HTTP streaming
-├─────────────────────┤
-│   Core Foundation   │  ← Error handling, async, types
-└─────────────────────┘
-```
-
-### **Transport Abstraction**
-
-```rust
-#[async_trait]
-pub trait Transport: Send + Sync {
-    async fn connect(&mut self) -> McpResult<()>;
-    async fn send_request(&mut self, request: JsonRpcRequest, timeout: Option<Duration>) -> McpResult<JsonRpcResponse>;
-    async fn send_notification(&mut self, notification: JsonRpcNotification) -> McpResult<()>;
-    async fn receive_message(&mut self, timeout: Option<Duration>) -> McpResult<JsonRpcMessage>;
-    async fn disconnect(&mut self) -> McpResult<()>;
-}
-```
-
-### **Error Handling**
-
-Comprehensive error types with context and retry logic:
-
-```rust
-pub enum McpError {
-    Transport(TransportError),    // Connection issues
-    Protocol(ProtocolError),      // MCP protocol violations
-    Validation(ValidationError),  // Schema/constraint errors
-    Auth(AuthError),             // Authentication failures
-    Config(ConfigError),         // Configuration problems
-}
-```
-
-## 📚 **Usage Examples**
-
-### **Interactive Debugging Session**
-
-```bash
-$ mcp-probe debug --stdio python server.py
-
-🔍 MCP Probe v0.1.0 - Interactive MCP Debugger
-
-┌─ Server Connection ─────────────────────────────────────┐
-│ ✅ Connected to: my-awesome-server v1.2.0              │
-│ 🔄 Protocol: 2024-11-05                               │
-│ 🚀 Transport: stdio                                   │
-└────────────────────────────────────────────────────────┘
-
-┌─ Capabilities ──────────────────────────────────────────┐
-│ 🛠️  Tools: list_files, read_file, execute_command      │
-│ 📄 Resources: file://, env://                         │
-│ 💭 Prompts: code_review, documentation                │
-│ 📊 Logging: debug, info, warning, error              │
-└────────────────────────────────────────────────────────┘
-
-> Available commands: tools, resources, prompts, call, help, quit
-> Type 'help' for detailed command information
-
-mcp> tools
-┌─ Available Tools ───────────────────────────────────────┐
-│ list_files     List files in a directory              │
-│ read_file      Read contents of a file                │
-│ execute_cmd    Execute a shell command safely         │
-└────────────────────────────────────────────────────────┘
-
-mcp> call list_files path=/home/user
-🔄 Calling tool: list_files
-📤 Request sent (ID: req_1)
-⏱️  Waiting for response...
-📥 Response received (42ms)
-
-┌─ Tool Result ───────────────────────────────────────────┐
-│ ✅ Success                                             │
-│                                                        │
-│ Files found:                                           │
-│ - server.py                                           │
-│ - config.json                                         │
-│ - README.md                                           │
-│ - requirements.txt                                    │
-└────────────────────────────────────────────────────────┘
-```
-
-### **Programmatic Server Testing**
-
-```rust
-use mcp_probe::testing::*;
-
-#[tokio::test]
-async fn test_my_server() -> TestResult {
-    let mut tester = McpTester::new()
-        .stdio("python", &["my_server.py"])
-        .timeout(Duration::from_secs(30))
-        .build().await?;
-
-    // Test initialization
-    tester.assert_connects().await?;
-    tester.assert_protocol_version("2024-11-05").await?;
-
-    // Test capabilities
-    let caps = tester.get_capabilities().await?;
-    assert!(caps.tools.is_some());
-    assert!(caps.resources.is_some());
-
-    // Test tool execution
-    let result = tester.call_tool("list_files", json!({
-        "path": "/tmp"
-    })).await?;
-
-    tester.assert_success(&result)?;
-    tester.assert_contains_text(&result, "file")?;
-
-    Ok(())
-}
-```
-
-### **Custom Transport Implementation**
-
-```rust
-use mcp_probe::{Transport, TransportConfig, McpResult};
-
-pub struct CustomTransport {
-    // Your custom transport implementation
-}
-
-#[async_trait]
-impl Transport for CustomTransport {
-    async fn connect(&mut self) -> McpResult<()> {
-        // Custom connection logic
-        Ok(())
-    }
-
-    // Implement other required methods...
-}
-
-// Register and use
-let config = TransportConfig::Custom(Box::new(CustomTransport::new()));
-let client = McpClient::new(config, ClientConfig::default(), handler).await?;
-```
-
-## 🛠️ **Configuration**
-
-MCP Probe supports flexible configuration via TOML files:
-
-```toml
-[server]
-name = "my-development-server"
-timeout = "30s"
-
-[transport]
-type = "stdio"
-command = "python"
-args = ["server.py", "--debug"]
-working_dir = "/path/to/server"
-
-[transport.environment]
-DEBUG = "1"
-LOG_LEVEL = "info"
-
-[debugging]
-auto_connect = true
-show_raw_messages = false
-save_session = true
-session_file = "debug-session.json"
-
-[client]
-request_timeout = "30s"
-max_retries = 3
-retry_delay = "1s"
-```
-
-## 🎨 **Why Rust?**
-
-MCP Probe is built in Rust because:
-
-- **🚀 Performance**: Zero-cost abstractions and minimal runtime overhead
-- **🛡️ Safety**: Memory safety without garbage collection prevents entire classes of bugs
-- **⚡ Concurrency**: First-class async support perfect for network protocols
-- **🔧 Ecosystem**: Rich ecosystem of crates for networking, parsing, and TUI development
-- **📦 Distribution**: Single binary deployment with no runtime dependencies
-
-## 🗺️ **Roadmap**
-
-### **v0.1.0 - Foundation** ✅
-
-- [x] Core MCP protocol implementation
-- [x] All three transport types (stdio, HTTP+SSE, HTTP streaming)
-- [x] Basic client API
-- [x] Comprehensive error handling
-- [x] Full test suite
-
-### **v0.2.0 - CLI Debugger** 🚧
-
-- [ ] Interactive TUI debugger
-- [ ] Protocol message inspection
-- [ ] Live tool/resource testing
-- [ ] Session recording and playback
-- [ ] Configuration file support
-
-### **v0.3.0 - Advanced Features** 📋
-
-- [ ] Server performance profiling
-- [ ] Custom transport plugins
-- [ ] VS Code extension
-- [ ] Docker integration
-- [ ] CI/CD testing helpers
-
-### **v1.0.0 - Production Ready** 🎯
-
-- [ ] Comprehensive documentation
-- [ ] Performance benchmarks
-- [ ] Security audit
-- [ ] Plugin ecosystem
-- [ ] Enterprise features
-
-## 🤝 **Contributing**
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### **Development Setup**
+### From Source (Recommended)
 
 ```bash
 # Clone the repository
-git clone https://github.com/contextgeneric/mcp-probe
+git clone https://github.com/your-org/mcp-probe.git
 cd mcp-probe
 
-# Install Rust (if needed)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# Build and install
+cargo build --release
+cargo install --path .
 
-# Build the project
+# Or run directly
+cargo run -- --help
+```
+
+### Quick Start
+
+```bash
+# Test with a local MCP server
+cargo run -- debug --http-sse http://localhost:3000
+
+# Connect to remote server
+cargo run -- debug --http-sse https://api.example.com/mcp
+
+# Use WebSocket transport
+cargo run -- debug --websocket ws://localhost:8080/mcp
+
+# STDIO mode for local development
+cargo run -- debug --stdio python my_mcp_server.py
+```
+
+---
+
+## 🎯 Section 1: MCP Client Usage
+
+MCP Probe serves as a comprehensive MCP client for developers and integrators who need to interact with MCP servers programmatically or interactively.
+
+### 🔧 Client Configuration
+
+```bash
+# Basic connection with default settings
+mcp-probe debug --http-sse http://localhost:3000
+
+# Advanced configuration
+mcp-probe debug \
+  --http-sse http://localhost:3000 \
+  --timeout 30 \
+  --max-retries 3 \
+  --session-file my_session.json
+```
+
+### 💡 Interactive Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        🎮 INTERACTIVE CLIENT WORKFLOW                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  1️⃣ DISCOVERY PHASE                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ ┌─ Connection ─┐  ┌─ Capabilities ─┐  ┌─ Search & Filter ─┐             │   │
+│  │ │• Auto-detect │  │• Tools: 373     │  │• Fuzzy matching   │             │   │
+│  │ │• Protocol    │  │• Resources: 1   │  │• Category filter  │             │   │
+│  │ │• Session ID  │  │• Prompts: 3     │  │• Real-time index  │             │   │
+│  │ └──────────────┘  └─────────────────┘  └───────────────────┘             │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                    ▼                                            │
+│  2️⃣ INTERACTION PHASE                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ ┌─ Parameter Input ─┐  ┌─ Execution ─┐  ┌─ Response Analysis ─┐          │   │
+│  │ │• Smart forms      │  │• Real-time   │  │• Multi-format view  │          │   │
+│  │ │• Type validation  │  │• Progress    │  │• Error highlighting │          │   │
+│  │ │• Auto-completion  │  │• Correlation │  │• Export options     │          │   │
+│  │ └───────────────────┘  └──────────────┘  └─────────────────────┘          │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                    ▼                                            │
+│  3️⃣ ANALYSIS PHASE                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ ┌─ Session Review ─┐  ┌─ Error Analysis ─┐  ┌─ Export & Share ─┐          │   │
+│  │ │• Message history │  │• Root cause hints │  │• JSON export     │          │   │
+│  │ │• Timing metrics  │  │• Fix suggestions  │  │• Session replay  │          │   │
+│  │ │• Protocol trace  │  │• Debug logs       │  │• Report sharing  │          │   │
+│  │ └─────────────────────└───────────────────┘  └─────────────────┘          │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🔍 Smart Capability Discovery
+
+**Fuzzy Search Engine**: Find tools instantly among hundreds of capabilities
+
+```bash
+# Search examples (press '/' to activate)
+/github                    # Find GitHub-related tools
+/repo list                 # Find repository listing functions
+/add_numbers              # Direct tool name match
+```
+
+**Auto-Parameter Detection**: Intelligent form generation from JSON schemas
+
+```bash
+# Example: GitHub repo listing tool
+┌─────────────────────────────────────┐
+│ 📋 org (REQUIRED) [string]         │
+│ 💡 The organization name...         │
+│ > myorganization                    │
+├─────────────────────────────────────┤
+│ 📝 per_page (optional) [integer]   │
+│ 💡 Results per page (max 100)      │
+│ > 50                                │
+└─────────────────────────────────────┘
+```
+
+### 🚀 Execution Patterns
+
+**Direct Command Mode**:
+
+```bash
+# Syntax: category.name {"param": "value"}
+tools.add_numbers {"a": 10, "b": 20}
+resources.readme_content
+prompts.generate_docs {"style": "technical"}
+```
+
+**Interactive Mode**: Use TUI navigation for guided execution
+
+**Batch Mode**: Execute multiple operations with session scripts
+
+---
+
+## 🔧 Section 2: MCP Deployment Troubleshooting
+
+MCP Probe excels as a diagnostic tool for MCP deployments, providing deep insights into protocol behavior, performance bottlenecks, and integration issues.
+
+### 🚨 Diagnostic Features
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      🔍 TROUBLESHOOTING DASHBOARD                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  🔴 CONNECTION DIAGNOSTICS          🟡 PROTOCOL ANALYSIS                       │
+│  ┌─────────────────────────────┐    ┌─────────────────────────────────────┐   │
+│  │ • Transport validation      │    │ • Message correlation               │   │
+│  │ • Authentication checks     │    │ • Response time analysis            │   │
+│  │ • Firewall/proxy detection  │    │ • Error pattern recognition         │   │
+│  │ • SSL/TLS verification      │    │ • Capability compatibility         │   │
+│  └─────────────────────────────┘    └─────────────────────────────────────┘   │
+│                                                                                 │
+│  🟢 PERFORMANCE MONITORING          🟣 ERROR INVESTIGATION                     │
+│  ┌─────────────────────────────┐    ┌─────────────────────────────────────┐   │
+│  │ • Request/response latency  │    │ • Stack trace analysis             │   │
+│  │ • Throughput measurement    │    │ • JSON schema validation           │   │
+│  │ • Memory usage tracking     │    │ • Serialization debugging          │   │
+│  │ • Connection stability      │    │ • Integration compatibility        │   │
+│  └─────────────────────────────┘    └─────────────────────────────────────┘   │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🛠️ Common Issues & Solutions
+
+#### Issue 1: Connection Failures
+
+**Symptoms**: "Transport connection failed", "Connection refused"
+
+**Diagnosis with MCP Probe**:
+
+```bash
+# 1. Test basic connectivity
+mcp-probe debug --http-sse http://localhost:3000
+
+# 2. Check different transports
+mcp-probe debug --websocket ws://localhost:8080/mcp
+mcp-probe debug --stdio python server.py
+
+# 3. Monitor protocol flow
+# Look for: Connection status, SSL handshake, authentication
+```
+
+**Troubleshooting Guide**:
+
+- ✅ Server is running and listening on correct port
+- ✅ Firewall rules allow connections
+- ✅ SSL certificates are valid (for HTTPS)
+- ✅ Authentication credentials are correct
+
+#### Issue 2: Tool Execution Failures
+
+**Symptoms**: "Serialization error", "Invalid parameters", "Tool not found"
+
+**Diagnosis with MCP Probe**:
+
+```bash
+# 1. Verify tool discovery
+# Navigate to Tools section, check tool list
+
+# 2. Inspect parameter schemas
+# Select tool -> Parameter form should show required fields
+
+# 3. Check raw response data
+# Use 'V' key to cycle through response formats
+```
+
+**Common Root Causes**:
+
+- 🔧 **Parameter Mismatch**: Use Parameter Form to validate inputs
+- 🔧 **Tool Name Prefix Issues**: Check clean vs. full tool names
+- 🔧 **JSON Format Errors**: Validate JSON in response viewer
+- 🔧 **Server-Side Errors**: Review error messages in message history
+
+#### Issue 3: Performance Problems
+
+**Symptoms**: Slow responses, timeouts, memory issues
+
+**Diagnosis with MCP Probe**:
+
+```bash
+# 1. Monitor timing metrics
+# Check message history for response times
+
+# 2. Analyze message sizes
+# Use Raw JSON view to inspect payload sizes
+
+# 3. Track connection stability
+# Watch for reconnection attempts in logs
+```
+
+### 📊 Protocol Debugging
+
+**Message Flow Analysis**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         📈 PROTOCOL MESSAGE FLOW                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Client                    MCP Probe                      Server               │
+│    │                          │                             │                  │
+│    │──── initialize ────────►│────── HTTP/POST ──────────►│                  │
+│    │                          │                             │                  │
+│    │◄─── init_response ──────│◄───── 200 OK ──────────────│                  │
+│    │                          │                             │                  │
+│    │──── tools/list ────────►│────── HTTP/POST ──────────►│                  │
+│    │                          │                             │                  │
+│    │◄─── tools_response ─────│◄───── 200 OK ──────────────│                  │
+│    │                          │                             │                  │
+│    │──── tools/call ────────►│────── HTTP/POST ──────────►│                  │
+│    │                          │         (params)            │                  │
+│    │                          │                             │                  │
+│    │◄─── result/error ───────│◄───── 200/400/500 ─────────│                  │
+│    │                          │                             │                  │
+│                                                                                 │
+│  🔍 MCP Probe captures and analyzes each step:                                 │
+│  • Request correlation (session ID tracking)                                   │
+│  • Response time measurement                                                    │
+│  • Error classification and suggestions                                        │
+│  • JSON schema validation                                                      │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🎯 Environment Validation
+
+**Development Environment Checklist**:
+
+```bash
+# 1. Server Implementation Validation
+✅ Server responds to initialize request
+✅ Capabilities are properly declared
+✅ Tool schemas are valid JSON Schema
+✅ Error responses include helpful messages
+
+# 2. Integration Testing
+✅ Authentication flow works correctly
+✅ Session management is stable
+✅ All transport types are supported
+✅ Error handling is graceful
+
+# 3. Performance Validation
+✅ Response times are within SLA
+✅ Memory usage is reasonable
+✅ Concurrent requests are handled
+✅ Rate limiting is implemented correctly
+```
+
+---
+
+## 📚 Command Cheat Sheet
+
+### 🔧 Basic Commands
+
+```bash
+# Connection
+mcp-probe debug --http-sse <url>          # HTTP Server-Sent Events
+mcp-probe debug --websocket <url>         # WebSocket connection
+mcp-probe debug --stdio <command>         # STDIO transport
+mcp-probe debug --tcp <host:port>         # Raw TCP connection
+
+# Configuration
+mcp-probe debug <transport> --timeout 30        # Request timeout
+mcp-probe debug <transport> --max-retries 3     # Retry attempts
+mcp-probe debug <transport> --session-file <f>  # Session persistence
+```
+
+### ⌨️ TUI Navigation Hotkeys
+
+#### Global Navigation
+
+| Key   | Action        | Description               |
+| ----- | ------------- | ------------------------- |
+| `Tab` | Cycle Focus   | Move between panels       |
+| `F1`  | Help          | Show/hide help dialog     |
+| `F2`  | Save Session  | Export current session    |
+| `F3`  | Toggle JSON   | Switch JSON view mode     |
+| `F4`  | Clear History | Reset message history     |
+| `F5`  | Environment   | Set environment variables |
+| `Q`   | Quit          | Exit application          |
+
+#### Capability Browser
+
+| Key     | Action   | Description                   |
+| ------- | -------- | ----------------------------- |
+| `Enter` | Select   | Open capability details       |
+| `↑/↓`   | Navigate | Move through categories/items |
+| `←/→`   | Page     | Previous/next page            |
+| `/`     | Search   | Activate fuzzy search         |
+| `Esc`   | Back     | Return to categories          |
+
+#### Search Interface
+
+| Key     | Action   | Description           |
+| ------- | -------- | --------------------- |
+| `/`     | Activate | Open search dialog    |
+| `Type`  | Query    | Enter search terms    |
+| `↑/↓`   | Navigate | Browse search results |
+| `Enter` | Select   | Choose result         |
+| `Esc`   | Cancel   | Close search          |
+
+#### Parameter Forms
+
+| Key     | Action   | Description                     |
+| ------- | -------- | ------------------------------- |
+| `↑/↓`   | Navigate | Move between fields (auto-edit) |
+| `Type`  | Edit     | Enter parameter values          |
+| `Enter` | Save     | Save field and move to next     |
+| `Tab`   | Execute  | Run with current parameters     |
+| `Esc`   | Cancel   | Close parameter form            |
+
+#### Response Viewer
+
+| Key         | Action      | Description                                |
+| ----------- | ----------- | ------------------------------------------ |
+| `R`         | Open        | View selected response                     |
+| `V`         | View Mode   | Cycle formats (Formatted/Raw/Tree/Summary) |
+| `↑/↓`       | Scroll V    | Vertical scrolling                         |
+| `←/→`       | Scroll H    | Horizontal scrolling                       |
+| `PgUp/PgDn` | Fast Scroll | Page up/down                               |
+| `Home/End`  | Jump        | Go to top/bottom                           |
+| `Esc`       | Close       | Exit response viewer                       |
+
+### 🎮 Interactive Commands
+
+#### Direct Tool Execution
+
+```bash
+# Syntax: category.name {json_params}
+tools.add_numbers {"a": 10, "b": 20}
+tools.github_list_repos {"org": "microsoft", "per_page": 10}
+resources.readme_content
+prompts.code_review {"language": "rust", "style": "detailed"}
+```
+
+#### Environment Variables
+
+```bash
+# Set variables for tool injection
+KEY=value,API_TOKEN=secret123,ORG=myorg
+
+# Variables automatically injected into tool calls
+tools.api_call {}  # Will include ORG=myorg if tool expects it
+```
+
+---
+
+## 🔍 Advanced Features
+
+### 📊 Response Analysis Modes
+
+#### 1. **Formatted View** (Default)
+
+- ✨ Syntax highlighting for JSON
+- 📋 Structured analysis with field breakdown
+- 🔍 Error highlighting and suggestions
+- 📈 Content statistics and metadata
+
+#### 2. **Raw JSON View**
+
+- 📄 Pretty-printed JSON output
+- 🔍 Full response data visibility
+- 📋 Copy-friendly format
+- 🛠️ Debug-oriented display
+
+#### 3. **Tree View**
+
+- 🌳 Hierarchical data visualization
+- 📁 Collapsible object/array nodes
+- 📊 Type indicators for each field
+- 🎯 Easy navigation of nested structures
+
+#### 4. **Summary View**
+
+- 📈 High-level response overview
+- 📊 Key metrics and statistics
+- ⚡ Quick status assessment
+- 🎯 Action-oriented insights
+
+### 🔒 Session Management
+
+```bash
+# Auto-save sessions
+mcp-probe debug --http-sse http://localhost:3000 --session-file debug.json
+
+# Session contains:
+# • Connection parameters
+# • Message history with timing
+# • Error logs and diagnostics
+# • Environment variables
+# • Response cache for offline analysis
+```
+
+### 🌐 Multi-Transport Support
+
+#### HTTP Server-Sent Events (Recommended)
+
+```bash
+mcp-probe debug --http-sse http://localhost:3000
+# ✅ Most compatible with web servers
+# ✅ Firewall-friendly
+# ✅ Built-in error handling
+```
+
+#### WebSocket
+
+```bash
+mcp-probe debug --websocket ws://localhost:8080/mcp
+# ✅ Real-time bidirectional communication
+# ✅ Lower latency
+# ⚠️ May require proxy configuration
+```
+
+#### STDIO (Development)
+
+```bash
+mcp-probe debug --stdio python my_server.py
+# ✅ Perfect for local testing
+# ✅ Direct process communication
+# ⚠️ Limited to local development
+```
+
+#### TCP (Advanced)
+
+```bash
+mcp-probe debug --tcp localhost:9000
+# ✅ Low-level protocol access
+# ✅ Custom transport implementations
+# ⚠️ Requires manual protocol handling
+```
+
+---
+
+## 🛠️ Development & Contributing
+
+### Project Structure
+
+```
+mcp-probe/
+├── crates/
+│   ├── mcp-core/           # Core MCP protocol implementation
+│   │   ├── src/
+│   │   │   ├── client.rs   # High-level MCP client
+│   │   │   ├── transport/  # Transport layer abstractions
+│   │   │   └── messages/   # Protocol message definitions
+│   │   └── Cargo.toml
+│   └── mcp-cli/            # TUI application
+│       ├── src/
+│       │   ├── tui.rs      # Terminal UI implementation
+│       │   ├── search.rs   # Capability search engine
+│       │   └── main.rs     # CLI entry point
+│       └── Cargo.toml
+├── target/                 # Build artifacts
+├── Cargo.toml              # Workspace configuration
+└── README.md
+```
+
+### Building from Source
+
+```bash
+# Debug build
 cargo build
+
+# Release build (recommended for performance)
+cargo build --release
 
 # Run tests
 cargo test
 
-# Run with debug logging
-RUST_LOG=debug cargo run -- debug --stdio echo
+# Run with logging
+RUST_LOG=debug cargo run -- debug --http-sse http://localhost:3000
 ```
 
-### **Code Standards**
+### Contributing Guidelines
 
-- **No unsafe code** - We prioritize memory safety
-- **Comprehensive tests** - All features must have test coverage
-- **Documentation** - Public APIs must be documented with examples
-- **Error handling** - All errors must be properly typed and contextual
-
-## 📖 **Resources**
-
-- **[MCP Specification](https://spec.modelcontextprotocol.io/)** - Official MCP protocol documentation
-- **[API Documentation](https://docs.rs/mcp-probe)** - Rust API documentation
-- **[Examples](./examples/)** - Code examples and tutorials
-- **[Discord Community](https://discord.gg/mcp)** - Join the MCP community discussions
-
-## 📜 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 **Acknowledgments**
-
-- **Anthropic** - For creating the Model Context Protocol specification
-- **Rust Community** - For the amazing ecosystem of crates that made this possible
-- **MCP Community** - For feedback and contributions to improve the developer experience
+1. 🍴 Fork the repository
+2. 🌿 Create a feature branch
+3. ✅ Add tests for new functionality
+4. 📝 Update documentation
+5. 🔄 Submit a pull request
 
 ---
 
-<div align="center">
+## 📄 License
 
-**Built with ❤️ in Rust**
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-[Report Bug](https://github.com/contextgeneric/mcp-probe/issues) • [Request Feature](https://github.com/contextgeneric/mcp-probe/issues) • [Documentation](https://docs.rs/mcp-probe)
+---
 
-</div>
+## 🤝 Support & Community
+
+- **📖 Documentation**: [docs.example.com/mcp-probe](docs.example.com/mcp-probe)
+- **🐛 Issues**: [GitHub Issues](https://github.com/your-org/mcp-probe/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/your-org/mcp-probe/discussions)
+- **🔧 Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+---
+
+## 🚀 Quick Examples
+
+### Example 1: Debug API Integration
+
+```bash
+# Connect to your MCP server
+mcp-probe debug --http-sse https://api.yourservice.com/mcp
+
+# 1. Verify connection and capabilities
+# 2. Search for relevant tools: /api or /user
+# 3. Test tool execution with real parameters
+# 4. Analyze responses for integration issues
+# 5. Export session for team sharing
+```
+
+### Example 2: Performance Testing
+
+```bash
+# Set up performance monitoring
+mcp-probe debug --http-sse http://localhost:3000 --session-file perf_test.json
+
+# 1. Execute high-frequency tool calls
+# 2. Monitor response times in message history
+# 3. Check for memory leaks or connection issues
+# 4. Review session file for timing analysis
+```
+
+### Example 3: Development Workflow
+
+```bash
+# Local development testing
+mcp-probe debug --stdio python my_mcp_server.py
+
+# 1. Rapid iteration on server code
+# 2. Test tool schemas and validation
+# 3. Debug parameter handling
+# 4. Verify error response formats
+```
+
+---
+
+**🎯 MCP Probe: Making MCP protocol debugging as intuitive as it should be.**

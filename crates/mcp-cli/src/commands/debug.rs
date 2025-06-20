@@ -1,400 +1,313 @@
-//! Debug Command - Interactive MCP Protocol Negotiation
+//! Debug Command - Interactive MCP Protocol Debugging with TUI
 //!
-//! This command provides an interactive debugging experience for MCP protocol
-//! negotiation using our beautiful fluid DSL. It demonstrates the elegance
-//! of composable flow construction while providing rich debugging capabilities.
+//! This command provides a comprehensive interactive debugging experience for MCP servers
+//! using a rich terminal user interface (TUI) built with ratatui.
 
+use crate::{cli::DebugArgs, tui::DebuggerApp};
 use anyhow::Result;
 use clap::Parser;
-use std::time::Duration;
-use tracing::warn;
-
 use mcp_core::{
-    messages::Implementation,
+    client::McpClient,
+    messages::{
+        prompts::{ListPromptsRequest, ListPromptsResponse, Prompt},
+        resources::{ListResourcesRequest, ListResourcesResponse, Resource},
+        tools::{ListToolsRequest, ListToolsResponse, Tool},
+        Implementation,
+    },
     transport::TransportConfig,
+    McpResult,
 };
 
-use crate::flows::{
-    Connect, Initialize, WaitForResponse, ProcessCapabilities,
-    SendNotification, TransitionTo, FlowStep, NegotiationState,
-    FlowDurationExt, demo::run_all_demos,
-};
-use crate::utils::{print_banner, print_success, print_error, print_info};
+/// Extension trait to add higher-level methods to McpClient
+trait McpClientExt {
+    async fn list_tools(&mut self) -> McpResult<Vec<Tool>>;
+    async fn list_resources(&mut self) -> McpResult<Vec<Resource>>;
+    async fn list_prompts(&mut self) -> McpResult<Vec<Prompt>>;
+}
 
-/// Debug MCP protocol negotiation with interactive flow visualization
+impl McpClientExt for McpClient {
+    async fn list_tools(&mut self) -> McpResult<Vec<Tool>> {
+        let request = ListToolsRequest { cursor: None };
+        let response = self.send_request("tools/list", request).await?;
+
+        if let Some(result) = response.result {
+            let list_response: ListToolsResponse = serde_json::from_value(result)?;
+            Ok(list_response.tools)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    async fn list_resources(&mut self) -> McpResult<Vec<Resource>> {
+        let request = ListResourcesRequest { cursor: None };
+        let response = self.send_request("resources/list", request).await?;
+
+        if let Some(result) = response.result {
+            let list_response: ListResourcesResponse = serde_json::from_value(result)?;
+            Ok(list_response.resources)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    async fn list_prompts(&mut self) -> McpResult<Vec<Prompt>> {
+        let request = ListPromptsRequest { cursor: None };
+        let response = self.send_request("prompts/list", request).await?;
+
+        if let Some(result) = response.result {
+            let list_response: ListPromptsResponse = serde_json::from_value(result)?;
+            Ok(list_response.prompts)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+}
+
+/// Debug MCP server with interactive TUI
 #[derive(Parser, Debug)]
 pub struct DebugCommand {
-    /// Transport type to use for connection
-    #[clap(short, long, value_enum, default_value = "stdio")]
-    pub transport: TransportType,
-    
-    /// Target server command (for stdio transport)
-    #[clap(long, default_value = "mcp-server")]
-    pub command: String,
-    
-    /// Server URL (for HTTP transports)
-    #[clap(long)]
-    pub url: Option<String>,
-    
+    /// Transport configuration
+    #[command(flatten)]
+    pub transport: crate::cli::TransportArgs,
+
+    /// Configuration file to load
+    #[arg(short, long)]
+    pub config: Option<std::path::PathBuf>,
+
+    /// Start in non-interactive mode
+    #[arg(long)]
+    pub non_interactive: bool,
+
+    /// Show raw MCP protocol messages
+    #[arg(long)]
+    pub show_raw: bool,
+
+    /// Save session to file
+    #[arg(long)]
+    pub save_session: Option<std::path::PathBuf>,
+
+    /// Load and replay a previous session
+    #[arg(long)]
+    pub replay_session: Option<std::path::PathBuf>,
+
     /// Connection timeout in seconds
-    #[clap(long, default_value = "30")]
+    #[arg(long, default_value = "30")]
     pub timeout: u64,
-    
-    /// Enable verbose debug output
-    #[clap(short, long)]
-    pub verbose: bool,
-    
-    /// Show DSL demonstration instead of actual debugging
-    #[clap(long)]
-    pub demo: bool,
-    
-    /// Use strict validation
-    #[clap(long)]
-    pub strict: bool,
-    
-    /// Maximum retry attempts
-    #[clap(long, default_value = "3")]
+
+    /// Maximum number of retry attempts
+    #[arg(long, default_value = "3")]
     pub max_retries: u32,
 }
 
-#[derive(clap::ValueEnum, Clone, Debug)]
-pub enum TransportType {
-    Stdio,
-    HttpSse,
-    HttpStream,
-}
-
 impl DebugCommand {
-    /// Execute the debug command with beautiful flow visualization
+    /// Execute the debug command
     pub async fn execute(&self) -> Result<()> {
-        if self.demo {
-            return self.run_dsl_demonstration().await;
-        }
-        
-        print_banner("🔍 MCP Protocol Debug Session");
-        
-        if self.verbose {
-            print_info("Debug mode enabled - showing detailed negotiation flow");
-        }
-        
-        // Create elegant client info
+        // Create client info
         let client_info = Implementation {
             name: "mcp-probe".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
             metadata: std::collections::HashMap::new(),
         };
-        
-        print_info(&format!("Client: {} v{}", client_info.name, client_info.version));
-        
+
         // Build transport configuration
-        let transport_config = self.build_transport_config()?;
-        print_info(&format!("Transport: {:?}", self.transport));
-        
-        // Create our beautiful negotiation flow
-        let flow = self.create_elegant_flow(client_info.clone());
-        print_success("✨ Negotiation flow created with elegant DSL");
-        
-        // Execute the flow with rich debugging
-        self.execute_flow_with_debugging(flow, transport_config).await
+        let transport_config = self.transport.to_transport_config()?;
+
+        // Convert to DebugArgs structure
+        let debug_args = DebugArgs {
+            transport: self.transport.clone(),
+            config: self.config.clone(),
+            non_interactive: self.non_interactive,
+            show_raw: self.show_raw,
+            save_session: self.save_session.clone(),
+            replay_session: self.replay_session.clone(),
+            timeout: self.timeout,
+            max_retries: self.max_retries,
+        };
+
+        if self.non_interactive {
+            // Run in simple non-interactive mode
+            self.run_non_interactive(transport_config, client_info)
+                .await
+        } else {
+            // Launch the rich TUI experience
+            self.run_interactive_tui(transport_config, client_info, debug_args)
+                .await
+        }
     }
-    
-    /// Run the DSL demonstration showcasing the beauty of our syntax
-    async fn run_dsl_demonstration(&self) -> Result<()> {
-        print_banner("🎨 MCP Negotiation Flow DSL - Bricolage Demonstration");
-        print_info("Showcasing the elegant, fluid syntax of our negotiation DSL");
+
+    /// Run in non-interactive mode with simple output
+    async fn run_non_interactive(
+        &self,
+        transport_config: TransportConfig,
+        client_info: Implementation,
+    ) -> Result<()> {
+        println!("🔍 MCP Probe - Non-Interactive Debug Mode");
+        println!("🔌 Transport: {}", transport_config.transport_type());
+        println!("📡 Client: {} v{}", client_info.name, client_info.version);
         println!();
-        
-        // Run all the beautiful demonstrations
-        run_all_demos().await?;
-        
-        println!();
-        print_success("🌟 DSL demonstration complete!");
-        print_info("The beauty of bricolage - composing complex flows from simple, elegant parts");
-        
+
+        // Create and connect client
+        let mut client = mcp_core::client::McpClient::with_defaults(transport_config).await?;
+        let _server_info = client.connect(client_info).await?;
+
+        println!("✅ Connected to MCP server successfully!");
+
+        // List capabilities
+        println!("\n🛠️  Server Capabilities:");
+
+        match client.list_tools().await {
+            Ok(tools) => {
+                println!("📋 Tools ({}):", tools.len());
+                for tool in tools {
+                    println!("  → {} - {}", tool.name, tool.description);
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to list tools: {}", e);
+            }
+        }
+
+        match client.list_resources().await {
+            Ok(resources) => {
+                println!("📁 Resources ({}):", resources.len());
+                for resource in resources {
+                    println!(
+                        "  → {} - {}",
+                        resource.uri,
+                        resource.description.unwrap_or_default()
+                    );
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to list resources: {}", e);
+            }
+        }
+
+        match client.list_prompts().await {
+            Ok(prompts) => {
+                println!("💬 Prompts ({}):", prompts.len());
+                for prompt in prompts {
+                    println!("  → {} - {}", prompt.name, prompt.description);
+                }
+            }
+            Err(e) => {
+                println!("❌ Failed to list prompts: {}", e);
+            }
+        }
+
+        println!("\n✅ Debug session completed successfully!");
         Ok(())
     }
-    
-    /// Create an elegant negotiation flow using our beautiful DSL
-    fn create_elegant_flow(&self, client_info: Implementation) -> crate::flows::NegotiationFlow {
-        let timeout_duration = self.timeout.secs();
-        
-        if self.strict {
-            // Strict validation flow with enhanced checking
-            FlowStep::chain(Connect::with_timeout(timeout_duration))
-                .then(Initialize::with_client_info(client_info.clone()))
-                .then(WaitForResponse::with_validation())
-                .then(ProcessCapabilities::with_strict_validation())
-                .then(SendNotification::initialized())
-                .then(TransitionTo::ready_state())
-                .with_retry_policy(crate::flows::RetryPolicy {
-                    max_attempts: self.max_retries,
-                    initial_delay: 1000.millis(),
-                    max_delay: 30.secs(),
-                    backoff_multiplier: 2.0,
-                })
-                .build(client_info)
-        } else {
-            // Standard flow with graceful handling
-            FlowStep::chain(Connect::with_timeout(timeout_duration))
-                .then(Initialize::with_client_info(client_info.clone()))
-                .then(WaitForResponse::with_validation())
-                .then(ProcessCapabilities::extract_all())
-                .then(SendNotification::initialized())
-                .then(TransitionTo::ready_state())
-                .build(client_info)
-        }
-    }
-    
-    /// Execute the flow with rich debugging and visualization
-    async fn execute_flow_with_debugging(
-        &self, 
-        mut flow: crate::flows::NegotiationFlow, 
-        transport_config: TransportConfig
+
+    /// Run the interactive TUI experience
+    async fn run_interactive_tui(
+        &self,
+        transport_config: TransportConfig,
+        client_info: Implementation,
+        _debug_args: DebugArgs,
     ) -> Result<()> {
-        print_info("🚀 Starting MCP negotiation flow execution");
-        
-        // Show initial state
-        self.display_flow_state(flow.context());
-        
-        match flow.execute(transport_config).await {
-            Ok(final_context) => {
-                print_success("🎉 MCP negotiation completed successfully!");
-                self.display_success_summary(final_context);
-                self.display_timing_information(final_context);
-                self.display_capabilities_summary(final_context);
-                Ok(())
-            }
-            Err(error) => {
-                print_error(&format!("❌ MCP negotiation failed: {}", error));
-                self.display_error_context(flow.context());
-                Err(error)
-            }
-        }
-    }
-    
-    /// Display current flow state with beautiful formatting
-    fn display_flow_state(&self, context: &crate::flows::FlowContext) {
-        match &context.state {
-            NegotiationState::Idle => {
-                print_info("📍 State: Idle - Ready to begin negotiation");
-            }
-            NegotiationState::Connecting { transport_type } => {
-                print_info(&format!("📍 State: Connecting via {}", transport_type));
-            }
-            NegotiationState::Initializing { protocol_version } => {
-                print_info(&format!("📍 State: Initializing with protocol {}", protocol_version));
-            }
-            NegotiationState::Awaiting { timeout_remaining } => {
-                print_info(&format!("📍 State: Awaiting response (timeout: {:?})", timeout_remaining));
-            }
-            NegotiationState::Processing { capability_count } => {
-                print_info(&format!("📍 State: Processing {} capabilities", capability_count));
-            }
-            NegotiationState::Finalizing { notifications_pending } => {
-                print_info(&format!("📍 State: Finalizing ({} notifications pending)", notifications_pending));
-            }
-            NegotiationState::Ready { session_id } => {
-                print_success(&format!("📍 State: Ready! Session ID: {}", session_id));
-            }
-            NegotiationState::Retrying { attempt, reason } => {
-                warn!("📍 State: Retrying (attempt {}) - {}", attempt, reason);
-            }
-            NegotiationState::Failed { reason } => {
-                print_error(&format!("📍 State: Failed - {}", reason));
-            }
-        }
-    }
-    
-    /// Display success summary with rich information
-    fn display_success_summary(&self, context: &crate::flows::FlowContext) {
-        println!("\n🎯 Negotiation Summary:");
-        
-        if let Some(server_info) = &context.server_info {
-            print_info(&format!("   Server: {} v{}", server_info.name, server_info.version));
-        }
-        
-        print_info(&format!("   Client: {} v{}", context.client_info.name, context.client_info.version));
-        print_info(&format!("   Errors encountered: {}", context.errors.len()));
-    }
-    
-    /// Display timing information for performance analysis
-    fn display_timing_information(&self, context: &crate::flows::FlowContext) {
-        println!("\n⏱️  Timing Analysis:");
-        
-        if let Some(connection_time) = context.timing.connection_time {
-            print_info(&format!("   Connection: {:?}", connection_time));
-        }
-        
-        if let Some(negotiation_time) = context.timing.negotiation_time {
-            print_info(&format!("   Total negotiation: {:?}", negotiation_time));
-        }
-        
-        if self.verbose {
-            println!("   📊 Step-by-step timing:");
-            for (step, duration) in &context.timing.step_timings {
-                print_info(&format!("      {}: {:?}", step, duration));
-            }
-        }
-    }
-    
-    /// Display capabilities summary
-    fn display_capabilities_summary(&self, context: &crate::flows::FlowContext) {
-        println!("\n🛠️  Server Capabilities:");
-        
-        let caps = &context.capabilities;
-        
-        if caps.tools.list_allowed {
-            print_success("   ✅ Tools: List allowed");
-            if caps.tools.execute_allowed {
-                print_success("   ✅ Tools: Execute allowed");
-            }
-        }
-        
-        if caps.resources.list_allowed {
-            print_success("   ✅ Resources: List allowed");
-            if caps.resources.read_allowed {
-                print_success("   ✅ Resources: Read allowed");
-            }
-        }
-        
-        if caps.prompts.list_allowed {
-            print_success("   ✅ Prompts: List allowed");
-            if caps.prompts.execute_allowed {
-                print_success("   ✅ Prompts: Execute allowed");
-            }
-        }
-        
-        if caps.logging.enabled {
-            print_success(&format!("   ✅ Logging: Enabled (levels: {:?})", caps.logging.levels));
-        }
-        
-        if !caps.extensions.is_empty() {
-            print_info(&format!("   🔧 Extensions: {} available", caps.extensions.len()));
-        }
-    }
-    
-    /// Display error context for debugging
-    fn display_error_context(&self, context: &crate::flows::FlowContext) {
-        println!("\n🔍 Error Context:");
-        
-        self.display_flow_state(context);
-        
-        if !context.errors.is_empty() {
-            println!("   🚨 Errors encountered:");
-            for error in &context.errors {
-                print_error(&format!("      - {}", error));
-            }
-        }
-        
-        if self.verbose {
-            println!("   📊 Debug information:");
-            print_info(&format!("      Total execution time: {:?}", context.timing.total_time));
-            print_info(&format!("      Steps completed: {}", context.timing.step_timings.len()));
-        }
-    }
-    
-    /// Build transport configuration based on command arguments
-    fn build_transport_config(&self) -> Result<TransportConfig> {
-        match self.transport {
-            TransportType::Stdio => {
-                Ok(TransportConfig::Stdio(mcp_core::transport::StdioConfig {
-                    command: self.command.clone(),
-                    args: vec![],
-                    environment: std::collections::HashMap::new(),
-                    working_dir: None,
-                    timeout: Duration::from_secs(self.timeout),
-                }))
-            }
-            TransportType::HttpSse => {
-                let url = self.url.as_ref()
-                    .ok_or_else(|| anyhow::anyhow!("URL required for HTTP+SSE transport"))?;
-                Ok(TransportConfig::HttpSse(mcp_core::transport::HttpSseConfig {
-                    base_url: url.parse()?,
-                    timeout: Duration::from_secs(self.timeout),
-                    auth: None,
-                    headers: std::collections::HashMap::new(),
-                }))
-            }
-            TransportType::HttpStream => {
-                let url = self.url.as_ref()
-                    .ok_or_else(|| anyhow::anyhow!("URL required for HTTP streaming transport"))?;
-                Ok(TransportConfig::HttpStream(mcp_core::transport::HttpStreamConfig {
-                    base_url: url.parse()?,
-                    timeout: Duration::from_secs(self.timeout),
-                    auth: None,
-                    compression: false,
-                    flow_control_window: 65536,
-                    headers: std::collections::HashMap::new(),
-                }))
-            }
-        }
+        // Create and run the TUI application
+        let mut app = DebuggerApp::new(transport_config, client_info)?;
+        app.run().await?;
+
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+    use std::path::PathBuf;
+    use url::Url;
+
     #[tokio::test]
     async fn test_debug_command_creation() {
         let cmd = DebugCommand {
-            transport: TransportType::Stdio,
-            command: "test-server".to_string(),
-            url: None,
+            transport: crate::cli::TransportArgs {
+                stdio: Some("test-server".to_string()),
+                args: vec![],
+                working_dir: None,
+                http_sse: None,
+                http_stream: None,
+                auth_header: None,
+                headers: vec![],
+            },
+            config: None,
+            non_interactive: true,
+            show_raw: false,
+            save_session: None,
+            replay_session: None,
             timeout: 30,
-            verbose: true,
-            demo: false,
-            strict: false,
             max_retries: 3,
         };
-        
-        let client_info = Implementation {
-            name: "test".to_string(),
-            version: "1.0.0".to_string(),
-            metadata: std::collections::HashMap::new(),
-        };
-        
-        let flow = cmd.create_elegant_flow(client_info);
-        // Just check that flow is created successfully without panicking
-        assert_eq!(flow.context().state, NegotiationState::Idle);
+
+        // Just verify the command structure is valid
+        assert_eq!(cmd.timeout, 30);
+        assert_eq!(cmd.max_retries, 3);
+        assert!(cmd.non_interactive);
     }
-    
-    #[tokio::test]
-    async fn test_demo_mode() {
-        let cmd = DebugCommand {
-            transport: TransportType::Stdio,
-            command: "test".to_string(),
-            url: None,
-            timeout: 30,
-            verbose: false,
-            demo: true,
-            strict: false,
-            max_retries: 3,
-        };
-        
-        // Demo should run without errors
-        assert!(cmd.run_dsl_demonstration().await.is_ok());
-    }
-    
+
     #[test]
-    fn test_transport_config_building() {
-        let cmd = DebugCommand {
-            transport: TransportType::Stdio,
-            command: "test-server".to_string(),
-            url: None,
-            timeout: 30,
-            verbose: false,
-            demo: false,
-            strict: false,
-            max_retries: 3,
+    fn test_transport_config_conversion() {
+        let transport_args = crate::cli::TransportArgs {
+            stdio: Some("test-server".to_string()),
+            args: vec!["--arg1".to_string(), "--arg2".to_string()],
+            working_dir: Some(PathBuf::from("/tmp")),
+            http_sse: None,
+            http_stream: None,
+            auth_header: None,
+            headers: vec![],
         };
-        
-        let config = cmd.build_transport_config().unwrap();
+
+        let config = transport_args.to_transport_config().unwrap();
         match config {
-            TransportConfig::Stdio(mcp_core::transport::StdioConfig { command, .. }) => {
-                assert_eq!(command, "test-server");
+            TransportConfig::Stdio(stdio_config) => {
+                assert_eq!(stdio_config.command, "test-server");
+                assert_eq!(stdio_config.args, vec!["--arg1", "--arg2"]);
             }
             _ => panic!("Expected Stdio transport config"),
         }
     }
-} 
+
+    #[test]
+    fn test_http_sse_transport_config() {
+        let transport_args = crate::cli::TransportArgs {
+            stdio: None,
+            args: vec![],
+            working_dir: None,
+            http_sse: Some("http://localhost:3000".parse::<Url>().unwrap()),
+            http_stream: None,
+            auth_header: Some("Bearer token123".to_string()),
+            headers: vec!["Content-Type=application/json".to_string()],
+        };
+
+        let config = transport_args.to_transport_config().unwrap();
+        match config {
+            TransportConfig::HttpSse(http_config) => {
+                assert_eq!(http_config.base_url.to_string(), "http://localhost:3000/");
+            }
+            _ => panic!("Expected HttpSse transport config"),
+        }
+    }
+
+    #[test]
+    fn test_http_stream_transport_config() {
+        let transport_args = crate::cli::TransportArgs {
+            stdio: None,
+            args: vec![],
+            working_dir: None,
+            http_sse: None,
+            http_stream: Some("http://localhost:3000".parse::<Url>().unwrap()),
+            auth_header: None,
+            headers: vec![],
+        };
+
+        let config = transport_args.to_transport_config().unwrap();
+        match config {
+            TransportConfig::HttpStream(stream_config) => {
+                assert_eq!(stream_config.base_url.to_string(), "http://localhost:3000/");
+            }
+            _ => panic!("Expected HttpStream transport config"),
+        }
+    }
+}

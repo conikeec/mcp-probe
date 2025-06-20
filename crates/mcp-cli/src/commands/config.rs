@@ -1,54 +1,51 @@
 //! Configuration management command implementation
 
+use crate::cli::{ConfigAction, ConfigArgs, ConfigTemplate};
 use anyhow::Result;
-use crate::cli::{ConfigArgs, ConfigAction, ConfigTemplate};
 
 /// Execute the config command
 pub async fn run(args: ConfigArgs) -> Result<()> {
     match args.action {
-        ConfigAction::Init { output, template } => {
-            init_config(output, template).await
-        }
-        ConfigAction::Validate { config } => {
-            validate_config(config).await
-        }
-        ConfigAction::Show { config } => {
-            show_config(config).await
-        }
+        ConfigAction::Init { output, template } => init_config(output, template).await,
+        ConfigAction::Validate { config } => validate_config(config).await,
+        ConfigAction::Show { config } => show_config(config).await,
     }
 }
 
 /// Initialize a new configuration file
 async fn init_config(output: Option<std::path::PathBuf>, template: ConfigTemplate) -> Result<()> {
     let config_path = output.unwrap_or_else(|| "mcp-probe.toml".into());
-    
-    println!("🔧 Initializing configuration file: {}", config_path.display());
+
+    println!(
+        "🔧 Initializing configuration file: {}",
+        config_path.display()
+    );
     println!("📝 Using template: {:?}", template);
-    
+
     let config_content = match template {
         ConfigTemplate::Minimal => generate_minimal_config(),
         ConfigTemplate::Full => generate_full_config(),
         ConfigTemplate::Dev => generate_dev_config(),
         ConfigTemplate::Prod => generate_prod_config(),
     };
-    
+
     std::fs::write(&config_path, config_content)?;
     println!("✅ Configuration file created successfully");
-    
+
     Ok(())
 }
 
 /// Validate an existing configuration file
 async fn validate_config(config: std::path::PathBuf) -> Result<()> {
     println!("🔍 Validating configuration: {}", config.display());
-    
+
     if !config.exists() {
         anyhow::bail!("Configuration file not found: {}", config.display());
     }
-    
+
     let content = std::fs::read_to_string(&config)?;
     let _parsed: toml::Value = toml::from_str(&content)?;
-    
+
     println!("✅ Configuration is valid");
     Ok(())
 }
@@ -56,17 +53,17 @@ async fn validate_config(config: std::path::PathBuf) -> Result<()> {
 /// Show configuration content
 async fn show_config(config: Option<std::path::PathBuf>) -> Result<()> {
     let config_path = config.unwrap_or_else(|| "mcp-probe.toml".into());
-    
+
     println!("📄 Configuration: {}", config_path.display());
-    
+
     if !config_path.exists() {
         println!("❌ Configuration file not found");
         return Ok(());
     }
-    
+
     let content = std::fs::read_to_string(&config_path)?;
     println!("\n{}", content);
-    
+
     Ok(())
 }
 
@@ -86,7 +83,8 @@ version = "0.1.0"
 [timeouts]
 connection = "30s"
 request = "10s"
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate full configuration template
@@ -127,7 +125,8 @@ session_dir = "./sessions"
 level = "info"
 format = "pretty"
 file = "mcp-probe.log"
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate development configuration template
@@ -153,7 +152,8 @@ session_dir = "./dev-sessions"
 [logging]
 level = "debug"
 format = "pretty"
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate production configuration template
@@ -186,13 +186,14 @@ initialization = "120s"
 level = "info"
 format = "json"
 file = "/var/log/mcp-probe.log"
-"#.to_string()
+"#
+    .to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_config_templates_valid_toml() {
         // Test that all templates generate valid TOML
@@ -202,10 +203,9 @@ mod tests {
             generate_dev_config(),
             generate_prod_config(),
         ];
-        
+
         for template in &templates {
-            toml::from_str::<toml::Value>(template)
-                .expect("Template should generate valid TOML");
+            toml::from_str::<toml::Value>(template).expect("Template should generate valid TOML");
         }
     }
-} 
+}
