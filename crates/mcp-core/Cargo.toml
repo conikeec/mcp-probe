@@ -6,11 +6,12 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
-documentation.workspace = true
+documentation = "https://docs.rs/mcp-core"
 description = "Core MCP (Model Context Protocol) types, traits, and transport implementations"
 keywords.workspace = true
 categories.workspace = true
 rust-version.workspace = true
+readme = "README.md"
 
 [dependencies]
 # Core async and serialization

@@ -437,7 +437,7 @@ mod tests {
     fn test_initialize_request_creation() {
         let request = InitializeRequest::basic("test-client", "1.0.0");
 
-        assert_eq!(request.protocol_version, ProtocolVersion::V2024_11_05);
+        assert_eq!(request.protocol_version, ProtocolVersion::default());
         assert_eq!(request.client_info.name, "test-client");
         assert_eq!(request.client_info.version, "1.0.0");
         assert!(request.is_supported_version());

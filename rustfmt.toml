@@ -1,0 +1,35 @@
+# Rustfmt configuration for MCP Probe
+# This ensures consistent code formatting across the project
+# Using only stable rustfmt features for compatibility
+
+# Basic formatting
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+
+# Function formatting (stable equivalent)
+fn_params_layout = "Tall"
+
+# String formatting (these require nightly)
+# format_strings = true
+# format_macro_matchers = true
+
+# Comment formatting (these require nightly)
+# normalize_comments = true
+# wrap_comments = true
+# comment_width = 80
+
+# Misc formatting
+use_small_heuristics = "Default"
+newline_style = "Unix"
+
+# Chain formatting
+chain_width = 60
+single_line_if_else_max_width = 50
+
+# Array and struct formatting
+array_width = 60
+
+# Stable features only for now
+# Most advanced formatting options require nightly Rust
+# This configuration provides consistent formatting using stable features 

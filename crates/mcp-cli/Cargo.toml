@@ -7,9 +7,11 @@ edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
+documentation = "https://docs.rs/mcp-cli"
 description = "Interactive CLI debugger and TUI for MCP servers"
 keywords = ["mcp", "debugger", "cli", "tui", "protocol"]
 categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
 
 [[bin]]
 name = "mcp-probe"
@@ -17,7 +19,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Workspace crates
-mcp-core = { path = "../mcp-core" }
+mcp-core = { version = "0.1.0", path = "../mcp-core" }
 
 # Async runtime
 tokio = { workspace = true }

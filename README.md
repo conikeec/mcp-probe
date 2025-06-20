@@ -635,4 +635,82 @@ mcp-probe debug --stdio python my_mcp_server.py
 
 ---
 
+## 🔧 Development Automation & CI/CD
+
+### 🚀 Automated Quality Checks
+
+MCP Probe includes comprehensive automation for code quality and CI/CD:
+
+#### Development Scripts
+
+```bash
+# Run all checks (formatting, clippy, tests)
+./scripts/check.sh
+
+# Auto-fix formatting and clippy issues
+./scripts/fix.sh
+
+# Publish to crates.io (with all checks)
+./scripts/release.sh
+```
+
+#### Continuous Integration
+
+Our GitHub Actions CI pipeline automatically runs:
+
+- ✅ **Code Formatting**: `rustfmt` ensures consistent code style
+- ✅ **Linting**: `clippy` with warnings as errors for code quality
+- ✅ **Testing**: Full test suite across Linux, macOS, and Windows
+- ✅ **Security Audit**: `cargo audit` for vulnerability scanning
+- ✅ **Code Coverage**: Coverage reporting with codecov.io
+- ✅ **Documentation**: Automatic docs.rs generation
+
+#### Publishing Workflow
+
+Releases to crates.io are fully automated:
+
+1. **Trigger**: Create a GitHub release
+2. **Checks**: All CI checks must pass
+3. **Publish**:
+   - `mcp-core` published first (dependency)
+   - `mcp-cli` published second
+4. **Tagging**: Git tag created automatically
+
+#### Local Development Setup
+
+```bash
+# Install development tools
+cargo install cargo-audit cargo-tarpaulin
+
+# Set up git hooks (optional)
+cargo install cargo-husky
+```
+
+#### Code Quality Standards
+
+- **Formatting**: Enforced via `rustfmt.toml` configuration
+- **Linting**: Zero tolerance for clippy warnings
+- **Testing**: Comprehensive test coverage required
+- **Documentation**: All public APIs must be documented
+
+### 📦 Crate Publishing
+
+Both crates are available on crates.io:
+
+- **[mcp-core](https://crates.io/crates/mcp-core)**: Core MCP protocol implementation
+- **[mcp-cli](https://crates.io/crates/mcp-cli)**: Interactive TUI debugger
+
+#### Installation
+
+```bash
+# Install the CLI tool
+cargo install mcp-cli
+
+# Add core library to your project
+[dependencies]
+mcp-core = "0.1.0"
+```
+
+---
+
 **🎯 MCP Probe: Making MCP protocol debugging as intuitive as it should be.**
