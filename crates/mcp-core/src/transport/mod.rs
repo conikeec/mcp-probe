@@ -143,7 +143,7 @@ pub trait Transport: Send + Sync {
 /// 
 /// This structure provides insight into the transport's current state,
 /// performance characteristics, and any relevant metadata.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct TransportInfo {
     /// Type of transport (stdio, http-sse, http-stream)
     pub transport_type: String,

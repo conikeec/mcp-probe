@@ -124,6 +124,7 @@ pub enum ValidationCategory {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ValidationStatus {
     Pass,
+    Info,
     Warning,
     Error,
     Critical,
@@ -162,6 +163,7 @@ pub struct ReportMetadata {
 pub struct ValidationSummary {
     pub total_tests: usize,
     pub passed: usize,
+    pub info: usize,
     pub warnings: usize,
     pub errors: usize,
     pub critical: usize,
@@ -278,6 +280,9 @@ impl ValidationEngine {
         if self.config.test_capability_discovery {
             self.test_capability_discovery(&mut transport).await?;
         }
+        
+        // Step 3.5: Test transport-specific features
+        self.test_transport_features(&mut transport).await?;
         
         // Step 4: Test tools if available
         if let Some(tools_cap) = server_info.as_ref().and_then(|si| si.capabilities.tools.as_ref()) {
@@ -523,6 +528,178 @@ impl ValidationEngine {
         
         // Test prompts listing
         self.test_prompts_listing(transport).await?;
+        
+        Ok(())
+    }
+    
+    /// Test transport-specific features like resumability and security
+    async fn test_transport_features(&mut self, transport: &mut Box<dyn Transport>) -> Result<()> {
+        info!("Testing transport-specific features");
+        
+        let transport_info = transport.get_info();
+        let transport_type = &transport_info.transport_type;
+        
+        // Test basic transport info
+        self.add_result(ValidationResult {
+            test_id: "transport_info".to_string(),
+            test_name: "Transport Information".to_string(),
+            category: ValidationCategory::Protocol,
+            status: ValidationStatus::Pass,
+            message: format!("Using {} transport", transport_type),
+            details: Some(serde_json::to_value(&transport_info)?),
+            duration: Duration::from_millis(1),
+            timestamp: Utc::now(),
+        });
+        
+        // Test HTTP Streamable features if applicable
+        if transport_type == "streamable-http" {
+            self.test_streamable_http_features(transport).await?;
+        }
+        
+        // Test connection stability
+        if transport.is_connected() {
+            self.add_result(ValidationResult {
+                test_id: "connection_stability".to_string(),
+                test_name: "Connection Stability".to_string(),
+                category: ValidationCategory::Protocol,
+                status: ValidationStatus::Pass,
+                message: "Transport connection is stable".to_string(),
+                details: None,
+                duration: Duration::from_millis(1),
+                timestamp: Utc::now(),
+            });
+        } else {
+            self.add_result(ValidationResult {
+                test_id: "connection_stability".to_string(),
+                test_name: "Connection Stability".to_string(),
+                category: ValidationCategory::Protocol,
+                status: ValidationStatus::Error,
+                message: "Transport connection is not stable".to_string(),
+                details: None,
+                duration: Duration::from_millis(1),
+                timestamp: Utc::now(),
+            });
+        }
+        
+        Ok(())
+    }
+    
+    /// Test HTTP Streamable transport specific features
+    async fn test_streamable_http_features(&mut self, transport: &mut Box<dyn Transport>) -> Result<()> {
+        let transport_info = transport.get_info();
+        
+        // Test session management
+        if let Some(session_id) = transport_info.metadata.get("session_id") {
+            if !session_id.is_null() {
+                self.add_result(ValidationResult {
+                    test_id: "session_management".to_string(),
+                    test_name: "Session Management".to_string(),
+                    category: ValidationCategory::Security,
+                    status: ValidationStatus::Pass,
+                    message: "Session ID properly managed".to_string(),
+                    details: Some(json!({"session_id_present": true})),
+                    duration: Duration::from_millis(1),
+                    timestamp: Utc::now(),
+                });
+            } else {
+                self.add_result(ValidationResult {
+                    test_id: "session_management".to_string(),
+                    test_name: "Session Management".to_string(),
+                    category: ValidationCategory::Security,
+                    status: ValidationStatus::Warning,
+                    message: "No session ID found - server may not support sessions".to_string(),
+                    details: Some(json!({"session_id_present": false})),
+                    duration: Duration::from_millis(1),
+                    timestamp: Utc::now(),
+                });
+            }
+        }
+        
+        // Test resumability features
+        if let Some(can_resume) = transport_info.metadata.get("can_resume") {
+            if can_resume.as_bool().unwrap_or(false) {
+                self.add_result(ValidationResult {
+                    test_id: "resumability_support".to_string(),
+                    test_name: "Resumability Support".to_string(),
+                    category: ValidationCategory::Protocol,
+                    status: ValidationStatus::Pass,
+                    message: "Transport supports connection resumability".to_string(),
+                    details: Some(json!({"last_event_id": transport_info.metadata.get("last_event_id")})),
+                    duration: Duration::from_millis(1),
+                    timestamp: Utc::now(),
+                });
+            } else {
+                self.add_result(ValidationResult {
+                    test_id: "resumability_support".to_string(),
+                    test_name: "Resumability Support".to_string(),
+                    category: ValidationCategory::Protocol,
+                    status: ValidationStatus::Info,
+                    message: "Transport does not currently support resumability (normal for simple HTTP)".to_string(),
+                    details: None,
+                    duration: Duration::from_millis(1),
+                    timestamp: Utc::now(),
+                });
+            }
+        }
+        
+        // Test security features
+        if let Some(security_enabled) = transport_info.metadata.get("security_enabled") {
+            if security_enabled.as_bool().unwrap_or(false) {
+                self.add_result(ValidationResult {
+                    test_id: "security_features".to_string(),
+                    test_name: "Security Features".to_string(),
+                    category: ValidationCategory::Security,
+                    status: ValidationStatus::Pass,
+                    message: "Security validation is enabled".to_string(),
+                    details: Some(json!({
+                        "enforce_https": transport_info.metadata.get("enforce_https"),
+                        "localhost_only": transport_info.metadata.get("localhost_only")
+                    })),
+                    duration: Duration::from_millis(1),
+                    timestamp: Utc::now(),
+                });
+            }
+        }
+        
+        // Test HTTPS enforcement
+        if let Some(base_url) = transport_info.metadata.get("base_url") {
+            if let Some(url_str) = base_url.as_str() {
+                if url_str.starts_with("https://") {
+                    self.add_result(ValidationResult {
+                        test_id: "https_usage".to_string(),
+                        test_name: "HTTPS Usage".to_string(),
+                        category: ValidationCategory::Security,
+                        status: ValidationStatus::Pass,
+                        message: "Using secure HTTPS connection".to_string(),
+                        details: Some(json!({"url": url_str})),
+                        duration: Duration::from_millis(1),
+                        timestamp: Utc::now(),
+                    });
+                } else if url_str.starts_with("http://localhost") || url_str.starts_with("http://127.0.0.1") {
+                    self.add_result(ValidationResult {
+                        test_id: "https_usage".to_string(),
+                        test_name: "HTTPS Usage".to_string(),
+                        category: ValidationCategory::Security,
+                        status: ValidationStatus::Info,
+                        message: "Using HTTP for localhost (acceptable for development)".to_string(),
+                        details: Some(json!({"url": url_str})),
+                        duration: Duration::from_millis(1),
+                        timestamp: Utc::now(),
+                    });
+                } else {
+                    self.add_result(ValidationResult {
+                        test_id: "https_usage".to_string(),
+                        test_name: "HTTPS Usage".to_string(),
+                        category: ValidationCategory::Security,
+                        status: ValidationStatus::Warning,
+                        message: "Using insecure HTTP for non-localhost connection".to_string(),
+                        details: Some(json!({"url": url_str})),
+                        duration: Duration::from_millis(1),
+                        timestamp: Utc::now(),
+                    });
+                }
+            }
+        }
         
         Ok(())
     }
@@ -1079,6 +1256,7 @@ impl ValidationEngine {
     fn calculate_summary(&self) -> ValidationSummary {
         let total_tests = self.results.len();
         let passed = self.results.iter().filter(|r| r.status == ValidationStatus::Pass).count();
+        let info = self.results.iter().filter(|r| r.status == ValidationStatus::Info).count();
         let warnings = self.results.iter().filter(|r| r.status == ValidationStatus::Warning).count();
         let errors = self.results.iter().filter(|r| r.status == ValidationStatus::Error).count();
         let critical = self.results.iter().filter(|r| r.status == ValidationStatus::Critical).count();
@@ -1093,6 +1271,7 @@ impl ValidationEngine {
         ValidationSummary {
             total_tests,
             passed,
+            info,
             warnings,
             errors,
             critical,
@@ -1107,6 +1286,7 @@ impl ValidationStatus {
     pub fn name(&self) -> &'static str {
         match self {
             Self::Pass => "PASS",
+            Self::Info => "INFO",
             Self::Warning => "WARN",
             Self::Error => "ERROR",
             Self::Critical => "CRITICAL",
@@ -1118,6 +1298,7 @@ impl ValidationStatus {
     pub fn icon(&self) -> &'static str {
         match self {
             Self::Pass => "✅",
+            Self::Info => "ℹ️",
             Self::Warning => "⚠️",
             Self::Error => "❌",
             Self::Critical => "🚨",

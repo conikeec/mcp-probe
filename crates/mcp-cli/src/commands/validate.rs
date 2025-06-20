@@ -293,6 +293,7 @@ mod tests {
             summary: ValidationSummary {
                 total_tests: 5,
                 passed: 4,
+                info: 0,
                 warnings: 1,
                 errors: 0,
                 critical: 0,
