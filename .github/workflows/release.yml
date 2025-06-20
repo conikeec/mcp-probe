@@ -15,11 +15,17 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   # Create the GitHub release
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
@@ -108,21 +114,25 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        run: |
+          # Create release using GitHub CLI
+          gh release create "${{ steps.tag_name.outputs.TAG_NAME }}" \
+            --title "MCP Probe ${{ steps.tag_name.outputs.TAG_NAME }}" \
+            --notes-file release_notes.md \
+            --latest
+
+          # Get upload URL for assets
+          echo "upload_url=$(gh api repos/${{ github.repository }}/releases/tags/${{ steps.tag_name.outputs.TAG_NAME }} --jq '.upload_url')" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
-          release_name: MCP Probe ${{ steps.tag_name.outputs.TAG_NAME }}
-          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
-          draft: false
-          prerelease: false
 
   # Build binaries for multiple platforms
   build-binaries:
     name: Build ${{ matrix.target }}
     needs: create-release
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -208,25 +218,23 @@ jobs:
           fi
         shell: bash
 
-      - name: Upload binary
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.package.outputs.ARCHIVE_PATH }}
-          asset_name: ${{ steps.package.outputs.ARCHIVE_NAME }}
-          asset_content_type: application/octet-stream
+      - name: Get tag name
+        id: tag_name
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Upload checksum
-        uses: actions/upload-release-asset@v1
+      - name: Upload binary and checksum
+        run: |
+          # Upload binary archive
+          gh release upload "${{ steps.tag_name.outputs.TAG_NAME }}" \
+            "${{ steps.package.outputs.ARCHIVE_PATH }}" \
+            "${{ steps.package.outputs.ARCHIVE_PATH }}.sha256"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.package.outputs.ARCHIVE_PATH }}.sha256
-          asset_name: ${{ steps.package.outputs.ARCHIVE_NAME }}.sha256
-          asset_content_type: text/plain
 
   # Publish to crates.io after successful binary builds
   publish-crates:
