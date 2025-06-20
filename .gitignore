@@ -1,0 +1,53 @@
+# Rust build artifacts
+/target/
+**/target/
+Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project planning and private documentation
+/plan/
+/docs/private/
+*.private.*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+.env
+.env.local
+.env.*.local
+
+# Test artifacts
+/test-results/
+/coverage/
+*.profraw
+
+# Runtime and cache directories
+/.cargo/
+/node_modules/
+.cache/
+
+# Local configuration files
+config.local.*
+*.local.toml
+debug-session*.json
+
+# Backup files
+*.bak
+*.backup
+*~ 

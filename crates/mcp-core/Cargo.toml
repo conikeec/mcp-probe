@@ -1,0 +1,55 @@
+[package]
+name = "mcp-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+description = "Core MCP (Model Context Protocol) types, traits, and transport implementations"
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# Core async and serialization
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+
+# HTTP and networking for transports
+reqwest = { workspace = true }
+eventsource-stream = { workspace = true }
+url = { workspace = true, features = ["serde"] }
+
+# Error handling and logging
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Async trait support
+async-trait = { workspace = true }
+
+# Configuration serialization
+toml = { workspace = true }
+serde_yaml = { workspace = true }
+humantime-serde = { workspace = true }
+
+# Utilities
+bytes = "1.5"
+futures = "0.3"
+pin-project-lite = "0.2"
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+wiremock = { workspace = true }
+tempfile = { workspace = true }
+tracing-test = "0.2"
+
+[features]
+default = ["stdio", "http-sse", "http-stream"]
+stdio = []
+http-sse = []
+http-stream = [] 

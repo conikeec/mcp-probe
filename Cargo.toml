@@ -1,0 +1,70 @@
+[workspace]
+members = [
+    "crates/mcp-core",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Chetan Conikee <chetan@conikee.com>"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.75"
+repository = "https://github.com/conikeec/mcp-probe"
+homepage = "https://github.com/conikeec/mcp-probe"
+documentation = "https://docs.rs/mcp-probe"
+description = "A production-grade MCP client and debugger built on Rust"
+keywords = ["mcp", "model-context-protocol", "ai", "llm", "debugger"]
+categories = ["development-tools", "command-line-utilities"]
+
+[workspace.dependencies]
+# Core dependencies
+tokio = { version = "1.35", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# HTTP and networking
+reqwest = { version = "0.11", features = ["json", "stream"] }
+eventsource-stream = "0.2"
+url = "2.4"
+
+# CLI and TUI
+clap = { version = "4.4", features = ["derive", "env"] }
+ratatui = "0.25"
+crossterm = "0.27"
+tui-input = "0.8"
+
+# Configuration and serialization
+config = "0.13"
+toml = "0.8"
+async-trait = "0.1"
+serde_yaml = "0.9"
+humantime-serde = "1.1"
+
+# Development and testing
+tokio-test = "0.4"
+wiremock = "0.5"
+tempfile = "3.8"
+
+# Hypershell integration (when available)
+# hypershell = "0.1.0"
+# cgp = "0.4.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+debug = true
+opt-level = 0
+
+[profile.test]
+debug = true
+opt-level = 1 

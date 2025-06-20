@@ -1,0 +1,10 @@
+{
+  "type": "stdio",
+  "command": "python",
+  "args": [
+    "server.py"
+  ],
+  "working_dir": null,
+  "timeout": "30s",
+  "environment": {}
+}
