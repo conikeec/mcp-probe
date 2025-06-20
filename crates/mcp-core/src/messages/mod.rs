@@ -22,17 +22,18 @@
 //! # Examples
 //!
 //! ```rust
-//! use mcp_core::messages::{JsonRpcRequest, InitializeRequest, ProtocolVersion};
+//! use mcp_core::messages::{JsonRpcRequest, InitializeRequest, ProtocolVersion, Implementation};
 //! use serde_json::json;
 //!
 //! // Create an initialization request
 //! let init_request = InitializeRequest {
 //!     protocol_version: ProtocolVersion::V2024_11_05,
 //!     capabilities: Default::default(),
-//!     client_info: json!({
-//!         "name": "mcp-probe",
-//!         "version": "0.1.0"
-//!     }),
+//!     client_info: Implementation {
+//!         name: "mcp-probe".to_string(),
+//!         version: "0.1.0".to_string(),
+//!         metadata: std::collections::HashMap::new(),
+//!     },
 //! };
 //!
 //! // Wrap in JSON-RPC request

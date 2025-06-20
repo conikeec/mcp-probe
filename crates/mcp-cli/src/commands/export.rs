@@ -114,7 +114,7 @@ fn export_as_markdown(session_data: &str, args: &ExportArgs) -> Result<String> {
     report.push_str("## Session Information\n\n");
     report.push_str(&format!("- **Include Timing:** {}\n", args.include_timing));
     report.push_str(&format!("- **Include Raw Messages:** {}\n", args.include_raw));
-    report.push_str("\n");
+    report.push('\n');
     
     report.push_str("## Session Data\n\n");
     report.push_str("```\n");
@@ -189,7 +189,7 @@ fn export_as_csv(session_data: &str, _args: &ExportArgs) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
+    // Test utilities
     
     #[test]
     fn test_export_formats() -> Result<()> {

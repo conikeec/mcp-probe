@@ -7,11 +7,11 @@
 use anyhow::Result;
 use clap::Parser;
 use std::time::Duration;
-use tracing::{info, debug, warn};
+use tracing::warn;
 
 use mcp_core::{
     messages::Implementation,
-    transport::{TransportConfig, StdioConfig},
+    transport::TransportConfig,
 };
 
 use crate::flows::{
@@ -391,7 +391,7 @@ mod tests {
         
         let config = cmd.build_transport_config().unwrap();
         match config {
-            TransportConfig::Stdio(StdioConfig { command, .. }) => {
+            TransportConfig::Stdio(mcp_core::transport::StdioConfig { command, .. }) => {
                 assert_eq!(command, "test-server");
             }
             _ => panic!("Expected Stdio transport config"),

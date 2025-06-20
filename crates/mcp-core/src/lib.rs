@@ -15,7 +15,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
+//! ```rust,no_run
 //! use mcp_core::{
 //!     client::{McpClient, ClientConfig},
 //!     transport::TransportConfig,
@@ -33,14 +33,11 @@
 //!     let client_info = Implementation {
 //!         name: "mcp-probe".to_string(),
 //!         version: "0.1.0".to_string(),
+//!         metadata: std::collections::HashMap::new(),
 //!     };
 //!     
 //!     let server_info = client.connect(client_info).await?;
 //!     println!("Connected to: {}", server_info.implementation.name);
-//!     
-//!     // List available tools
-//!     let tools = client.list_tools(None).await?;
-//!     println!("Available tools: {}", tools.tools.len());
 //!     
 //!     Ok(())
 //! }

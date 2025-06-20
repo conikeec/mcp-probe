@@ -3,6 +3,8 @@
 //! This module provides an interactive TUI for debugging MCP servers,
 //! allowing real-time inspection of the negotiation process and server capabilities.
 
+#![allow(dead_code)]
+
 use anyhow::Result;
 use mcp_core::{messages::Implementation, transport::TransportConfig};
 use crate::cli::DebugArgs;

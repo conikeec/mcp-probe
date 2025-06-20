@@ -271,6 +271,7 @@ impl StreamingConnection {
 /// HTTP streaming transport implementation
 pub struct HttpStreamTransport {
     /// HTTP client for making requests
+    #[allow(dead_code)]
     client: Client,
     /// Base URL for the MCP server
     base_url: String,
@@ -299,7 +300,7 @@ impl HttpStreamTransport {
                 base_url: base_url.parse().unwrap_or_else(|_| "http://localhost".parse().unwrap()),
                 timeout: Duration::from_secs(300),
                 headers: std::collections::HashMap::new(),
-                auth: auth_header.map(|token| crate::transport::config::AuthConfig::bearer(token)),
+                auth: auth_header.map(crate::transport::config::AuthConfig::bearer),
                 compression: true,
                 flow_control_window: 65536,
             }),

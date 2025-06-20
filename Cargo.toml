@@ -69,6 +69,9 @@ dirs = "5.0"
 criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.8"
 
+# New dependencies
+jsonschema = "0.18"
+
 [profile.release]
 lto = true
 codegen-units = 1

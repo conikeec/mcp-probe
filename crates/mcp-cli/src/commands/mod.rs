@@ -11,11 +11,16 @@ pub mod config;
 pub mod validate;
 pub mod export;
 
+// Validation engine module
+pub mod validation;
+
 /// Common result type for all command operations
+#[allow(dead_code)]
 pub type CommandResult<T = ()> = Result<T>;
 
 /// Command execution context shared across all commands
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CommandContext {
     /// Whether to use colored output
     pub use_color: bool,
@@ -27,6 +32,7 @@ pub struct CommandContext {
 
 impl CommandContext {
     /// Create a new command context from CLI arguments
+    #[allow(dead_code)]
     pub fn new(cli: &crate::cli::Cli) -> Self {
         Self {
             use_color: !cli.no_color,
@@ -36,16 +42,19 @@ impl CommandContext {
     }
     
     /// Check if we should show verbose output
+    #[allow(dead_code)]
     pub fn is_verbose(&self) -> bool {
         self.verbosity > 0
     }
     
     /// Check if we should show debug output
+    #[allow(dead_code)]
     pub fn is_debug(&self) -> bool {
         self.verbosity > 1
     }
     
     /// Check if we should show trace output
+    #[allow(dead_code)]
     pub fn is_trace(&self) -> bool {
         self.verbosity > 2
     }

@@ -55,13 +55,16 @@ tracing-subscriber = { workspace = true }
 
 # Utilities
 uuid = { workspace = true }
-chrono = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
 dirs = { workspace = true }
 url = { workspace = true }
 
+# Validation
+tempfile = "3.8"
+jsonschema = "0.18"
+
 [dev-dependencies]
 criterion = { workspace = true }
-tempfile = "3.8"
 
 [features]
 default = ["tui"]

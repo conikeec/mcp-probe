@@ -285,6 +285,7 @@ impl McpClient {
     /// let client_info = Implementation {
     ///     name: "mcp-probe".to_string(),
     ///     version: "0.1.0".to_string(),
+    ///     metadata: std::collections::HashMap::new(),
     /// };
     ///
     /// let server_info = client.connect(client_info).await?;

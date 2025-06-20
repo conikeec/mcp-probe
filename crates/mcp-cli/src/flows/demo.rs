@@ -4,7 +4,7 @@
 //! demonstrating how complex protocol flows can be composed from simple,
 //! reusable building blocks in a readable, maintainable way.
 
-use std::time::Duration;
+// Demo flow for MCP negotiation
 use anyhow::Result;
 use mcp_core::{
     messages::Implementation,
@@ -31,7 +31,7 @@ pub async fn demo_basic_flow() -> Result<()> {
     };
     
     // The beauty of the DSL - reads like poetry!
-    let mut flow = FlowStep::chain(Connect::with_timeout(30.secs()))
+    let flow = FlowStep::chain(Connect::with_timeout(30.secs()))
         .then(Initialize::with_client_info(client_info.clone()))
         .then(WaitForResponse::with_validation())
         .then(ProcessCapabilities::extract_all())
@@ -40,7 +40,7 @@ pub async fn demo_basic_flow() -> Result<()> {
         .build(client_info);
     
     // Simulate execution (would use real transport config in practice)
-    let transport_config = TransportConfig::Stdio(mcp_core::transport::StdioConfig {
+    let _transport_config = TransportConfig::Stdio(mcp_core::transport::StdioConfig {
         command: "echo".to_string(),
         args: vec!["hello".to_string()],
         environment: std::collections::HashMap::new(),

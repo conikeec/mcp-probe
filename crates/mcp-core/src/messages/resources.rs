@@ -225,19 +225,11 @@ impl ResourceUpdatedNotification {
 }
 
 /// Notification that the list of resources has changed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ResourceListChangedNotification {
     /// Additional metadata about the change
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
-}
-
-impl Default for ResourceListChangedNotification {
-    fn default() -> Self {
-        Self {
-            metadata: HashMap::new(),
-        }
-    }
 }
 
 impl ResourceListChangedNotification {

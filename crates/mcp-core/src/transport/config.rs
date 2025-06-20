@@ -221,8 +221,7 @@ impl TransportConfig {
             }.into()),
         };
 
-        std::fs::write(path, content)
-            .map_err(|e| std::io::Error::from(e))?;
+        std::fs::write(path, content)?;
 
         Ok(())
     }
@@ -481,6 +480,7 @@ impl HttpStreamConfig {
 /// bearer tokens, and OAuth 2.0.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[allow(missing_docs)]
 pub enum AuthConfig {
     /// HTTP Basic Authentication
     Basic {

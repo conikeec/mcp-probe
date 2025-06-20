@@ -206,19 +206,11 @@ pub struct ResourceReference {
 }
 
 /// Notification that the list of prompts has changed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct PromptListChangedNotification {
     /// Additional metadata about the change
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
-}
-
-impl Default for PromptListChangedNotification {
-    fn default() -> Self {
-        Self {
-            metadata: HashMap::new(),
-        }
-    }
 }
 
 impl PromptListChangedNotification {

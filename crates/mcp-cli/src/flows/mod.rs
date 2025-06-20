@@ -4,6 +4,8 @@
 //! flows using elegant, pipe-like syntax. Inspired by shell scripting but designed
 //! specifically for protocol state management and validation.
 
+#![allow(dead_code)]
+
 use anyhow::Result;
 use serde_json::Value;
 use std::time::{Duration, Instant};

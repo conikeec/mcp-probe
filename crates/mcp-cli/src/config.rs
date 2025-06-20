@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// CLI configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     /// Default transport configuration
     pub transport: Option<mcp_core::transport::TransportConfig>,
@@ -87,17 +87,7 @@ pub struct TuiConfig {
     pub show_help: bool,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            transport: None,
-            client: ClientConfig::default(),
-            debug: DebugConfig::default(),
-            logging: LoggingConfig::default(),
-            tui: TuiConfig::default(),
-        }
-    }
-}
+// Default implementation is now derived
 
 impl Default for ClientConfig {
     fn default() -> Self {
@@ -152,6 +142,7 @@ impl Default for TuiConfig {
 
 impl Config {
     /// Load configuration from file
+    #[allow(dead_code)]
     pub fn load_from_file(path: &std::path::Path) -> Result<Self> {
         if !path.exists() {
             return Ok(Self::default());
@@ -164,6 +155,7 @@ impl Config {
     }
     
     /// Save configuration to file
+    #[allow(dead_code)]
     pub fn save_to_file(&self, path: &std::path::Path) -> Result<()> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -176,6 +168,7 @@ impl Config {
     }
     
     /// Merge with another configuration (other takes precedence)
+    #[allow(dead_code)]
     pub fn merge(&mut self, other: &Config) {
         if other.transport.is_some() {
             self.transport = other.transport.clone();
@@ -201,6 +194,7 @@ impl Config {
     }
     
     /// Get default configuration file path
+    #[allow(dead_code)]
     pub fn default_path() -> PathBuf {
         dirs::config_dir()
             .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| ".".into()))

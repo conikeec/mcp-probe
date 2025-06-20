@@ -291,7 +291,7 @@ impl TransportArgs {
         match (&self.stdio, &self.http_sse, &self.http_stream) {
             (Some(command), None, None) => {
                 // Parse command and arguments
-                let args: Vec<String> = self.args.iter().cloned().collect();
+                let args: Vec<String> = self.args.to_vec();
                 Ok(TransportConfig::stdio(command, &args))
             }
             (None, Some(url), None) => {

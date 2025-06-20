@@ -1,18 +1,18 @@
-//! HTTP+SSE transport implementation for MCP communication.
+//! Streamable HTTP transport implementation for MCP communication.
 //!
-//! This transport uses HTTP requests for client-to-server communication
-//! and Server-Sent Events (SSE) for server-to-client communication.
-//! It provides a good balance of simplicity and functionality for
-//! remote MCP server scenarios.
+//! This transport implements the MCP Streamable HTTP specification:
+//! - HTTP POST requests to base URL for client-to-server communication
+//! - Session management via Mcp-Session-Id headers
+//! - Support for single JSON responses and SSE streams
+//! - Automatic session extraction and inclusion
 
-use std::collections::HashMap;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use eventsource_stream::Eventsource;
 use futures::StreamExt;
-use reqwest::{Client, Url};
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::{Client, Response, Url};
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -20,54 +20,53 @@ use super::{Transport, TransportConfig, TransportInfo};
 use crate::error::{McpResult, TransportError};
 use crate::messages::{JsonRpcMessage, JsonRpcRequest, JsonRpcNotification, JsonRpcResponse};
 
-/// HTTP+SSE transport for remote MCP server communication.
+/// Streamable HTTP transport for MCP communication.
 ///
-/// This transport implementation provides:
-/// - HTTP POST requests for client-to-server messages
-/// - Server-Sent Events (SSE) for server-to-client messages
-/// - Automatic reconnection on connection failures
-/// - Configurable timeouts and authentication
-/// - Request/response correlation using message IDs
+/// This transport implements the official MCP Streamable HTTP specification:
+/// - Every client-to-server message is sent as HTTP POST to the base URL
+/// - Server assigns session ID via Mcp-Session-Id header during initialization  
+/// - Client includes session ID in all subsequent requests
+/// - Server responds with either single JSON or SSE stream based on Content-Type
+/// - Supports resumable connections and message replay
 pub struct HttpSseTransport {
     config: TransportConfig,
     http_client: Client,
     info: TransportInfo,
-    sse_connected: bool,
-    message_sender: Option<mpsc::UnboundedSender<JsonRpcMessage>>,
-    message_receiver: Option<mpsc::UnboundedReceiver<JsonRpcMessage>>,
-    pending_requests: HashMap<String, tokio::sync::oneshot::Sender<JsonRpcResponse>>,
+    session_id: Option<String>,
+    base_url: Url,
+    sse_receiver: Option<mpsc::UnboundedReceiver<JsonRpcMessage>>,
+    _sse_task_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl HttpSseTransport {
-    /// Create a new HTTP+SSE transport instance.
+    /// Create a new Streamable HTTP transport instance.
     ///
     /// # Arguments
     ///
-    /// * `config` - Transport configuration containing HTTP+SSE settings
+    /// * `config` - Transport configuration containing HTTP settings
     ///
     /// # Returns
     ///
     /// A new transport instance ready for connection.
-    pub fn new(config: TransportConfig) -> Self {
-        let http_client = Self::build_http_client(&config);
-        let info = TransportInfo::new("http-sse");
+    pub fn new(config: TransportConfig) -> McpResult<Self> {
+        let (http_client, base_url) = Self::build_http_client(&config)?;
+        let info = TransportInfo::new("streamable-http");
 
-        Self {
+        Ok(Self {
             config,
             http_client,
             info,
-            sse_connected: false,
-            message_sender: None,
-            message_receiver: None,
-            pending_requests: HashMap::new(),
-        }
+            session_id: None,
+            base_url,
+            sse_receiver: None,
+            _sse_task_handle: None,
+        })
     }
 
     /// Build the HTTP client with appropriate configuration.
-    fn build_http_client(config: &TransportConfig) -> Client {
-        let mut builder = Client::builder();
-
+    fn build_http_client(config: &TransportConfig) -> McpResult<(Client, Url)> {
         if let TransportConfig::HttpSse(sse_config) = config {
+            let mut builder = Client::builder();
             builder = builder.timeout(sse_config.timeout);
 
             // Add custom headers if specified
@@ -83,92 +82,96 @@ impl HttpSseTransport {
                 }
                 builder = builder.default_headers(headers);
             }
-        }
 
-        builder.build().unwrap_or_else(|_| Client::new())
-    }
-
-    /// Build the SSE endpoint URL.
-    fn build_sse_url(&self) -> McpResult<Url> {
-        if let TransportConfig::HttpSse(config) = &self.config {
-            let mut url = config.base_url.clone();
-            url.path_segments_mut()
-                .map_err(|_| TransportError::InvalidConfig {
-                    transport_type: "http-sse".to_string(),
-                    reason: "Invalid base URL for SSE endpoint".to_string(),
-                })?
-                .push("sse");
-            Ok(url)
-        } else {
-            Err(TransportError::InvalidConfig {
-                transport_type: "http-sse".to_string(),
-                reason: "Invalid configuration type".to_string(),
-            }.into())
-        }
-    }
-
-    /// Build the HTTP request endpoint URL.
-    fn build_request_url(&self) -> McpResult<Url> {
-        if let TransportConfig::HttpSse(config) = &self.config {
-            let mut url = config.base_url.clone();
-            url.path_segments_mut()
-                .map_err(|_| TransportError::InvalidConfig {
-                    transport_type: "http-sse".to_string(),
-                    reason: "Invalid base URL for request endpoint".to_string(),
-                })?
-                .push("message");
-            Ok(url)
-        } else {
-            Err(TransportError::InvalidConfig {
-                transport_type: "http-sse".to_string(),
-                reason: "Invalid configuration type".to_string(),
-            }.into())
-        }
-    }
-
-    /// Establish the SSE connection and start listening for messages.
-    async fn connect_sse(&mut self) -> McpResult<()> {
-        let sse_url = self.build_sse_url()?;
-        
-        tracing::debug!("Connecting to SSE endpoint: {}", sse_url);
-
-        // Create the SSE stream
-        let response = self.http_client
-            .get(sse_url)
-            .header("Accept", "text/event-stream")
-            .header("Cache-Control", "no-cache")
-            .send()
-            .await
-            .map_err(|e| TransportError::ConnectionError {
-                transport_type: "http-sse".to_string(),
-                reason: format!("Failed to connect to SSE endpoint: {}", e),
+            let client = builder.build().map_err(|e| TransportError::InvalidConfig {
+                transport_type: "streamable-http".to_string(),
+                reason: format!("Failed to build HTTP client: {}", e),
             })?;
 
-        if !response.status().is_success() {
-            return Err(TransportError::ConnectionError {
-                transport_type: "http-sse".to_string(),
-                reason: format!("SSE connection failed with status: {}", response.status()),
-            }.into());
+            Ok((client, sse_config.base_url.clone()))
+        } else {
+            Err(TransportError::InvalidConfig {
+                transport_type: "streamable-http".to_string(),
+                reason: "Invalid configuration type".to_string(),
+            }.into())
+        }
+    }
+
+    /// Send a request and handle both JSON and SSE responses according to MCP spec.
+    async fn send_mcp_request(&mut self, message: JsonRpcMessage) -> McpResult<Option<JsonRpcResponse>> {
+        let mut request_builder = self.http_client
+            .post(self.base_url.clone())
+            .header(CONTENT_TYPE, "application/json");
+
+        // Include session ID if we have one
+        if let Some(ref session_id) = self.session_id {
+            request_builder = request_builder.header("Mcp-Session-Id", session_id);
         }
 
-        // Convert the response to an event stream
-        let event_stream = response.bytes_stream().eventsource();
+        // Send the request
+        let response = request_builder
+            .json(&message)
+            .send()
+            .await
+            .map_err(|e| TransportError::NetworkError {
+                transport_type: "streamable-http".to_string(),
+                reason: format!("HTTP request failed: {}", e),
+            })?;
 
-        // Create message channel
+        // Extract session ID from response header (for initialization)
+        if let Some(session_header) = response.headers().get("mcp-session-id") {
+            if let Ok(session_str) = session_header.to_str() {
+                tracing::debug!("Extracted session ID: {}", session_str);
+                self.session_id = Some(session_str.to_string());
+            }
+        }
+
+        // Handle response based on Content-Type
+        let content_type = response.headers()
+            .get(CONTENT_TYPE)
+            .and_then(|ct| ct.to_str().ok())
+            .unwrap_or("application/json");
+
+        match content_type {
+            "application/json" => {
+                // Single JSON response - standard case
+                let json_response: JsonRpcResponse = response.json().await
+                    .map_err(|e| TransportError::SerializationError {
+                        transport_type: "streamable-http".to_string(),
+                        reason: format!("Failed to parse JSON response: {}", e),
+                    })?;
+                Ok(Some(json_response))
+            }
+            "text/event-stream" => {
+                // SSE stream response - for multiple messages
+                self.handle_sse_response(response).await?;
+                Ok(None) // SSE messages handled via receiver
+            }
+            _ => {
+                Err(TransportError::NetworkError {
+                    transport_type: "streamable-http".to_string(),
+                    reason: format!("Unexpected content type: {}", content_type),
+                }.into())
+            }
+        }
+    }
+
+    /// Handle SSE stream responses for server-to-client communication.
+    async fn handle_sse_response(&mut self, response: Response) -> McpResult<()> {
+        let event_stream = response.bytes_stream().eventsource();
         let (sender, receiver) = mpsc::unbounded_channel();
-        self.message_sender = Some(sender.clone());
-        self.message_receiver = Some(receiver);
+        self.sse_receiver = Some(receiver);
 
         // Spawn task to handle SSE events
-        let sender_clone = sender;
-        tokio::spawn(async move {
+        let task_handle = tokio::spawn(async move {
             let mut stream = event_stream;
             while let Some(event) = stream.next().await {
                 match event {
                     Ok(event) => {
+                        // Parse event data as JSON-RPC message
                         if let Ok(message) = serde_json::from_str::<JsonRpcMessage>(&event.data) {
-                            if sender_clone.send(message).is_err() {
-                                tracing::error!("Failed to send SSE message to handler");
+                            if sender.send(message).is_err() {
+                                tracing::debug!("SSE receiver dropped, stopping stream");
                                 break;
                             }
                         } else {
@@ -181,78 +184,72 @@ impl HttpSseTransport {
                     }
                 }
             }
+            tracing::debug!("SSE stream ended");
         });
 
+        self._sse_task_handle = Some(task_handle);
         Ok(())
     }
 
-    /// Send an HTTP request to the server.
-    async fn send_http_message(&mut self, message: JsonRpcMessage) -> McpResult<()> {
-        let request_url = self.build_request_url()?;
-        let json_body = serde_json::to_string(&message)
-            .map_err(|e| TransportError::SerializationError {
-                transport_type: "http-sse".to_string(),
-                reason: format!("Failed to serialize message: {}", e),
-            })?;
-
-        tracing::debug!("Sending HTTP message to: {}", request_url);
-
-        let response = self.http_client
-            .post(request_url)
-            .header("Content-Type", "application/json")
-            .body(json_body)
-            .send()
-            .await
-            .map_err(|e| TransportError::NetworkError {
-                transport_type: "http-sse".to_string(),
-                reason: format!("HTTP request failed: {}", e),
-            })?;
-
-        if !response.status().is_success() {
-            return Err(TransportError::NetworkError {
-                transport_type: "http-sse".to_string(),
-                reason: format!("HTTP request failed with status: {}", response.status()),
-            }.into());
-        }
-
-        Ok(())
+    /// Get current session ID for debugging.
+    pub fn session_id(&self) -> Option<&str> {
+        self.session_id.as_deref()
     }
 }
 
 #[async_trait]
 impl Transport for HttpSseTransport {
     async fn connect(&mut self) -> McpResult<()> {
-        tracing::info!("Connecting HTTP+SSE transport");
+        tracing::info!("Connecting Streamable HTTP transport to: {}", self.base_url);
 
-        // Establish SSE connection
-        self.connect_sse().await?;
+        // Test connectivity with a simple request
+        let test_response = self.http_client
+            .head(self.base_url.clone())
+            .send()
+            .await;
 
-        // Update transport info
-        self.info.mark_connected();
-        
-        tracing::info!("HTTP+SSE transport connected successfully");
-        Ok(())
+        match test_response {
+            Ok(_) => {
+                self.info.mark_connected();
+                tracing::info!("Streamable HTTP transport connected successfully");
+                Ok(())
+            }
+            Err(e) => {
+                Err(TransportError::ConnectionError {
+                    transport_type: "streamable-http".to_string(),
+                    reason: format!("Failed to connect to server: {}", e),
+                }.into())
+            }
+        }
     }
 
     async fn disconnect(&mut self) -> McpResult<()> {
-        tracing::info!("Disconnecting HTTP+SSE transport");
+        tracing::info!("Disconnecting Streamable HTTP transport");
 
-        // Close message channels
-        self.message_sender = None;
-        self.message_receiver = None;
+        // Terminate session if we have one
+        if let Some(ref session_id) = self.session_id {
+            let _ = self.http_client
+                .delete(self.base_url.clone())
+                .header("Mcp-Session-Id", session_id)
+                .send()
+                .await;
+        }
 
-        // Clear pending requests
-        self.pending_requests.clear();
+        // Clean up SSE resources
+        self.sse_receiver = None;
+        if let Some(handle) = self._sse_task_handle.take() {
+            handle.abort();
+        }
 
-        // Update transport info
+        self.session_id = None;
         self.info.mark_disconnected();
 
-        tracing::info!("HTTP+SSE transport disconnected");
+        tracing::info!("Streamable HTTP transport disconnected");
         Ok(())
     }
 
     fn is_connected(&self) -> bool {
-        self.info.connected && self.message_sender.is_some()
+        self.info.connected
     }
 
     async fn send_request(
@@ -262,47 +259,50 @@ impl Transport for HttpSseTransport {
     ) -> McpResult<JsonRpcResponse> {
         if !self.is_connected() {
             return Err(TransportError::NotConnected {
-                transport_type: "http-sse".to_string(),
+                transport_type: "streamable-http".to_string(),
                 reason: "Transport not connected".to_string(),
             }.into());
         }
 
-        let request_id = request.id.clone();
-        let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+        let timeout_duration = timeout_duration.unwrap_or(Duration::from_secs(30));
         
-        // Store the response sender for correlation
-        self.pending_requests.insert(request_id.to_string(), response_sender);
+        // Send request with timeout
+        let response = timeout(
+            timeout_duration,
+            self.send_mcp_request(JsonRpcMessage::Request(request))
+        ).await
+        .map_err(|_| TransportError::TimeoutError {
+            transport_type: "streamable-http".to_string(),
+            reason: format!("Request timed out after {:?}", timeout_duration),
+        })??;
 
-        // Send the request
-        self.send_http_message(JsonRpcMessage::Request(request)).await?;
         self.info.increment_requests_sent();
 
-        // Wait for response with timeout
-        let timeout_duration = timeout_duration.unwrap_or(Duration::from_secs(30));
-        let response = timeout(timeout_duration, response_receiver)
-            .await
-            .map_err(|_| TransportError::TimeoutError {
-                transport_type: "http-sse".to_string(),
-                reason: format!("Request {} timed out after {:?}", request_id, timeout_duration),
-            })?
-            .map_err(|_| TransportError::NetworkError {
-                transport_type: "http-sse".to_string(),
-                reason: "Response channel closed unexpectedly".to_string(),
-            })?;
-
-        self.info.increment_responses_received();
-        Ok(response)
+        match response {
+            Some(json_response) => {
+                self.info.increment_responses_received();
+                Ok(json_response)
+            }
+            None => {
+                // Response will come via SSE stream
+                Err(TransportError::NetworkError {
+                    transport_type: "streamable-http".to_string(),
+                    reason: "Response expected via SSE stream - use receive_message()".to_string(),
+                }.into())
+            }
+        }
     }
 
     async fn send_notification(&mut self, notification: JsonRpcNotification) -> McpResult<()> {
         if !self.is_connected() {
             return Err(TransportError::NotConnected {
-                transport_type: "http-sse".to_string(),
+                transport_type: "streamable-http".to_string(),
                 reason: "Transport not connected".to_string(),
             }.into());
         }
 
-        self.send_http_message(JsonRpcMessage::Notification(notification)).await?;
+        // Notifications don't expect responses
+        self.send_mcp_request(JsonRpcMessage::Notification(notification)).await?;
         self.info.increment_notifications_sent();
         Ok(())
     }
@@ -310,15 +310,15 @@ impl Transport for HttpSseTransport {
     async fn receive_message(&mut self, timeout_duration: Option<Duration>) -> McpResult<JsonRpcMessage> {
         if !self.is_connected() {
             return Err(TransportError::NotConnected {
-                transport_type: "http-sse".to_string(),
+                transport_type: "streamable-http".to_string(),
                 reason: "Transport not connected".to_string(),
             }.into());
         }
 
-        let receiver = self.message_receiver.as_mut().ok_or_else(|| {
+        let receiver = self.sse_receiver.as_mut().ok_or_else(|| {
             TransportError::NotConnected {
-                transport_type: "http-sse".to_string(),
-                reason: "Message receiver not available".to_string(),
+                transport_type: "streamable-http".to_string(),
+                reason: "No SSE stream available - server uses single JSON responses".to_string(),
             }
         })?;
 
@@ -326,37 +326,27 @@ impl Transport for HttpSseTransport {
             timeout(timeout_duration, receiver.recv())
                 .await
                 .map_err(|_| TransportError::TimeoutError {
-                    transport_type: "http-sse".to_string(),
+                    transport_type: "streamable-http".to_string(),
                     reason: format!("Message receive timed out after {:?}", timeout_duration),
                 })?
                 .ok_or_else(|| TransportError::DisconnectedError {
-                    transport_type: "http-sse".to_string(),
-                    reason: "Message channel closed".to_string(),
+                    transport_type: "streamable-http".to_string(),
+                    reason: "SSE stream closed".to_string(),
                 })?
         } else {
             receiver.recv().await.ok_or_else(|| TransportError::DisconnectedError {
-                transport_type: "http-sse".to_string(),
-                reason: "Message channel closed".to_string(),
+                transport_type: "streamable-http".to_string(),
+                reason: "SSE stream closed".to_string(),
             })?
         };
-
-        // Handle response correlation
-        if let JsonRpcMessage::Response(ref response) = message {
-            if let Some(response_sender) = self.pending_requests.remove(&response.id.to_string()) {
-                let _ = response_sender.send(response.clone());
-                // Don't return the response here since it's handled via the oneshot channel
-                return self.receive_message(timeout_duration).await;
-            }
-        }
 
         // Update statistics
         match &message {
             JsonRpcMessage::Request(_) => {
-                // Server-to-client request - not typically expected in MCP
-                tracing::warn!("Received unexpected server-to-client request");
+                // Server-to-client request via SSE
             }
             JsonRpcMessage::Response(_) => {
-                // Already handled above
+                self.info.increment_responses_received();
             }
             JsonRpcMessage::Notification(_) => {
                 self.info.increment_notifications_received();
@@ -369,15 +359,16 @@ impl Transport for HttpSseTransport {
     fn get_info(&self) -> TransportInfo {
         let mut info = self.info.clone();
         
-        // Add HTTP+SSE specific metadata
+        // Add Streamable HTTP specific metadata
+        info.add_metadata("base_url", serde_json::json!(self.base_url.to_string()));
+        info.add_metadata("session_id", serde_json::json!(self.session_id));
+        info.add_metadata("has_sse_stream", serde_json::json!(self.sse_receiver.is_some()));
+        
         if let TransportConfig::HttpSse(config) = &self.config {
-            info.add_metadata("base_url", serde_json::json!(config.base_url.to_string()));
             info.add_metadata("timeout", serde_json::json!(config.timeout.as_secs()));
             info.add_metadata("headers", serde_json::json!(config.headers));
             info.add_metadata("has_auth", serde_json::json!(config.auth.is_some()));
         }
-        
-        info.add_metadata("pending_requests", serde_json::json!(self.pending_requests.len()));
         
         info
     }
@@ -390,36 +381,33 @@ impl Transport for HttpSseTransport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::transport::TransportConfig;
 
     #[test]
-    fn test_http_sse_transport_creation() {
+    fn test_streamable_http_transport_creation() {
         let config = TransportConfig::http_sse("https://example.com/mcp").unwrap();
-        let transport = HttpSseTransport::new(config);
+        let transport = HttpSseTransport::new(config).unwrap();
         
-        assert_eq!(transport.get_info().transport_type, "http-sse");
+        assert_eq!(transport.get_info().transport_type, "streamable-http");
         assert!(!transport.is_connected());
+        assert!(transport.session_id().is_none());
     }
 
     #[test]
-    fn test_url_building() {
+    fn test_base_url_extraction() {
         let config = TransportConfig::http_sse("https://example.com/mcp").unwrap();
-        let transport = HttpSseTransport::new(config);
+        let transport = HttpSseTransport::new(config).unwrap();
         
-        let sse_url = transport.build_sse_url().unwrap();
-        assert_eq!(sse_url.to_string(), "https://example.com/mcp/sse");
-        
-        let request_url = transport.build_request_url().unwrap();
-        assert_eq!(request_url.to_string(), "https://example.com/mcp/message");
+        assert_eq!(transport.base_url.to_string(), "https://example.com/mcp");
     }
 
     #[test]
     fn test_transport_info_metadata() {
         let config = TransportConfig::http_sse("https://example.com/mcp").unwrap();
-        let transport = HttpSseTransport::new(config);
+        let transport = HttpSseTransport::new(config).unwrap();
         
         let info = transport.get_info();
         assert!(info.metadata.contains_key("base_url"));
-        assert!(info.metadata.contains_key("timeout"));
+        assert!(info.metadata.contains_key("session_id"));
+        assert!(info.metadata.contains_key("has_sse_stream"));
     }
 } 

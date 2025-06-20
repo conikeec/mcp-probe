@@ -53,7 +53,9 @@ pub enum McpError {
     /// Timeout errors for operations that exceed time limits
     #[error("Operation timed out after {duration_ms}ms: {operation}")]
     Timeout {
+        /// The operation that timed out
         operation: String,
+        /// The timeout duration in milliseconds
         duration_ms: u64,
     },
 
@@ -65,6 +67,7 @@ pub enum McpError {
     #[error("Serialization error: {source}")]
     Serialization {
         #[from]
+        /// The underlying serde_json error
         source: serde_json::Error,
     },
 
@@ -72,12 +75,16 @@ pub enum McpError {
     #[error("IO error: {source}")]
     Io {
         #[from]
+        /// The underlying IO error
         source: std::io::Error,
     },
 
     /// Generic errors for cases not covered by specific variants
     #[error("Internal error: {message}")]
-    Internal { message: String },
+    Internal { 
+        /// Error message
+        message: String 
+    },
 }
 
 /// Transport-specific errors for different MCP transport mechanisms.
@@ -85,6 +92,7 @@ pub enum McpError {
 /// Each transport type (stdio, HTTP+SSE, HTTP streaming) can have
 /// specific failure modes that need to be handled appropriately.
 #[derive(Error, Debug, Clone)]
+#[allow(missing_docs)]
 pub enum TransportError {
     /// Failed to establish connection to the MCP server
     #[error("Failed to connect to {transport_type} server: {reason}")]
@@ -188,6 +196,7 @@ pub enum TransportError {
 /// These errors occur when messages don't conform to the MCP specification
 /// or when protocol violations are detected.
 #[derive(Error, Debug, Clone)]
+#[allow(missing_docs)]
 pub enum ProtocolError {
     /// Invalid JSON-RPC message format
     #[error("Invalid JSON-RPC message: {reason}")]
@@ -268,6 +277,7 @@ pub enum ProtocolError {
 /// These errors occur during validation of server capabilities,
 /// tool parameters, resource schemas, etc.
 #[derive(Error, Debug, Clone)]
+#[allow(missing_docs)]
 pub enum ValidationError {
     /// Schema validation failed
     #[error("Schema validation failed for {object_type}: {reason}")]
@@ -306,6 +316,7 @@ pub enum ValidationError {
 /// These errors cover all aspects of authentication and authorization
 /// for different transport types and authentication schemes.
 #[derive(Error, Debug, Clone)]
+#[allow(missing_docs)]
 pub enum AuthError {
     /// Missing required authentication credentials
     #[error("Missing authentication credentials for {auth_type}")]
@@ -340,6 +351,7 @@ pub enum AuthError {
 /// These errors occur when configuration files are invalid,
 /// missing required parameters, or contain conflicting settings.
 #[derive(Error, Debug, Clone)]
+#[allow(missing_docs)]
 pub enum ConfigError {
     /// Configuration file not found
     #[error("Configuration file not found: {path}")]

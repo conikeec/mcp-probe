@@ -14,7 +14,7 @@
 //!
 //! # Examples
 //!
-//! ```rust
+//! ```rust,no_run
 //! use mcp_core::transport::{Transport, TransportFactory, TransportConfig};
 //! use mcp_core::messages::JsonRpcRequest;
 //! use serde_json::json;
@@ -22,19 +22,16 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     // Create a transport from configuration
-//!     let config = TransportConfig::stdio()
-//!         .command("python")
-//!         .args(vec!["server.py"])
-//!         .build();
+//!     let config = TransportConfig::stdio("python", &["server.py"]);
 //!         
 //!     let mut transport = TransportFactory::create(config).await?;
 //!     
-//!     // Send a request
-//!     let request = JsonRpcRequest::new("1", "initialize", json!({}));
-//!     transport.send_request(request).await?;
+//!     // Connect transport
+//!     transport.connect().await?;
 //!     
-//!     // Receive response
-//!     let response = transport.receive_response().await?;
+//!     // Send a request  
+//!     let request = JsonRpcRequest::new("1", "initialize", json!({}));
+//!     let response = transport.send_request(request, Some(std::time::Duration::from_secs(30))).await?;
 //!     println!("Received: {:?}", response);
 //!     
 //!     Ok(())

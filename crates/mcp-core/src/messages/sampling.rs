@@ -426,14 +426,14 @@ mod tests {
 
     #[test]
     fn test_stop_reason_serialization() {
-        let reasons = vec![
+        let reasons = [
             StopReason::EndTurn,
             StopReason::MaxTokens,
             StopReason::StopSequence,
             StopReason::ToolUse,
         ];
 
-        let expected = vec![
+        let expected = [
             "\"end_turn\"",
             "\"max_tokens\"", 
             "\"stop_sequence\"",

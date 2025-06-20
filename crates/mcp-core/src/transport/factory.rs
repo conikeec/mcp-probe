@@ -73,7 +73,7 @@ impl TransportFactory {
 
             #[cfg(feature = "http-sse")]
             TransportConfig::HttpSse(_) => {
-                Ok(Box::new(HttpSseTransport::new(config)))
+                Ok(Box::new(HttpSseTransport::new(config)?))
             }
 
             #[cfg(not(feature = "http-sse"))]
@@ -127,18 +127,16 @@ impl TransportFactory {
     /// 
     /// A vector of transport type names that are supported in this build.
     pub fn supported_transports() -> Vec<&'static str> {
-        let mut transports = Vec::new();
+        vec![
+            #[cfg(feature = "stdio")]
+            "stdio",
 
-        #[cfg(feature = "stdio")]
-        transports.push("stdio");
+            #[cfg(feature = "http-sse")]
+            "http-sse",
 
-        #[cfg(feature = "http-sse")]
-        transports.push("http-sse");
-
-        #[cfg(feature = "http-stream")]
-        transports.push("http-stream");
-
-        transports
+            #[cfg(feature = "http-stream")]
+            "http-stream",
+        ]
     }
 
     /// Create a transport with retry logic.
@@ -273,7 +271,7 @@ mod tests {
         {
             assert!(result.is_ok());
             let transport = result.unwrap();
-            assert_eq!(transport.get_info().transport_type, "http-sse");
+            assert_eq!(transport.get_info().transport_type, "streamable-http");
         }
         
         #[cfg(not(feature = "http-sse"))]

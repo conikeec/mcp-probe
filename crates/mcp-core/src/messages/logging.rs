@@ -253,19 +253,11 @@ impl ResourceUpdatedNotification {
 }
 
 /// Notification that the list of resources has changed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ResourceListChangedNotification {
     /// Additional metadata about the change
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
-}
-
-impl Default for ResourceListChangedNotification {
-    fn default() -> Self {
-        Self {
-            metadata: HashMap::new(),
-        }
-    }
 }
 
 impl ResourceListChangedNotification {
@@ -282,19 +274,11 @@ impl ResourceListChangedNotification {
 }
 
 /// Notification that the list of tools has changed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ToolListChangedNotification {
     /// Additional metadata about the change
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
-}
-
-impl Default for ToolListChangedNotification {
-    fn default() -> Self {
-        Self {
-            metadata: HashMap::new(),
-        }
-    }
 }
 
 impl ToolListChangedNotification {
@@ -311,19 +295,11 @@ impl ToolListChangedNotification {
 }
 
 /// Notification that the list of prompts has changed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct PromptListChangedNotification {
     /// Additional metadata about the change
     #[serde(flatten)]
     pub metadata: HashMap<String, Value>,
-}
-
-impl Default for PromptListChangedNotification {
-    fn default() -> Self {
-        Self {
-            metadata: HashMap::new(),
-        }
-    }
 }
 
 impl PromptListChangedNotification {
@@ -359,7 +335,7 @@ mod tests {
     #[test]
     fn test_log_level_serialization() {
         let levels = LogLevel::all();
-        let expected = vec!["debug", "info", "notice", "warning", "error", "critical"];
+        let expected = ["debug", "info", "notice", "warning", "error", "critical"];
 
         for (level, expected) in levels.iter().zip(expected.iter()) {
             let json = serde_json::to_string(level).unwrap();
