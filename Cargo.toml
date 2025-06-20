@@ -34,7 +34,7 @@ humantime-serde = "1.1"
 html-escape = "0.2"
 
 # HTTP and networking
-reqwest = { version = "0.11", default-features = false, features = ["json", "stream", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 url = { version = "2.5", features = ["serde"] }
 eventsource-stream = "0.2"
 bytes = "1.5"
@@ -43,9 +43,9 @@ hyper-tungstenite = "0.13"
 
 # CLI and TUI
 clap = { version = "4.4", features = ["derive", "env"] }
-ratatui = "0.28"
-crossterm = "0.28"
-tui-textarea = "0.6"
+ratatui = "0.29"
+crossterm = "0.29"
+tui-textarea = "0.7"
 dialoguer = { version = "0.11", features = ["completion"] }
 
 # Flow states handled by internal state machine
@@ -62,11 +62,11 @@ chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 
 # Development and testing
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.6", features = ["html_reports"] }
 tempfile = "3.8"
 
 # New dependencies
-jsonschema = "0.18"
+jsonschema = "0.30"
 
 [profile.release]
 lto = true

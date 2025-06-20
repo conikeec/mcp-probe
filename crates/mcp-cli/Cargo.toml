@@ -59,7 +59,7 @@ url = { workspace = true }
 
 # Validation
 tempfile = "3.8"
-jsonschema = "0.18"
+jsonschema = "0.30"
 
 [dev-dependencies]
 criterion = { workspace = true }
