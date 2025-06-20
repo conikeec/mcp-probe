@@ -236,6 +236,7 @@ jobs:
           gh release upload "${{ steps.tag_name.outputs.TAG_NAME }}" \
             "${{ steps.package.outputs.ARCHIVE_PATH }}" \
             "${{ steps.package.outputs.ARCHIVE_PATH }}.sha256"
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
