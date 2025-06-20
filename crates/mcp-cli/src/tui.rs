@@ -4,11 +4,6 @@
 //! allowing real-time inspection of the negotiation process and server capabilities.
 
 use anyhow::Result;
-use ratatui::crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
 use mcp_core::{
     client::McpClient,
     messages::{
@@ -24,6 +19,11 @@ use mcp_core::{
     },
     transport::TransportConfig,
     McpResult,
+};
+use ratatui::crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
     backend::{Backend, CrosstermBackend},
