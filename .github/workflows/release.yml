@@ -228,6 +228,7 @@ jobs:
           else
             echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
+        shell: bash
 
       - name: Upload binary and checksum
         run: |
