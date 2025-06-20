@@ -1,0 +1,69 @@
+[package]
+name = "mcp-cli"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Interactive CLI debugger and TUI for MCP servers"
+keywords = ["mcp", "debugger", "cli", "tui", "protocol"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "mcp-probe"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace crates
+mcp-core = { path = "../mcp-core" }
+
+# Async runtime
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+
+# CLI framework
+clap = { workspace = true }
+dialoguer = { workspace = true }
+
+# TUI framework
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tui-textarea = { workspace = true }
+
+# Hypershell for flow states
+cgp = { workspace = true }
+hypershell = { workspace = true }
+hypershell-components = { workspace = true }
+hypershell-tokio-components = { workspace = true }
+
+# Serialization and config
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+toml = { workspace = true }
+html-escape = { workspace = true }
+
+# Error handling and logging
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+criterion = { workspace = true }
+tempfile = "3.8"
+
+[features]
+default = ["tui"]
+tui = []
+json-logs = [] 

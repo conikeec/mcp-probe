@@ -15,14 +15,18 @@ rust-version.workspace = true
 [dependencies]
 # Core async and serialization
 tokio = { workspace = true }
+tokio-util = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 uuid = { workspace = true }
+futures = { workspace = true }
 
 # HTTP and networking for transports
 reqwest = { workspace = true }
 eventsource-stream = { workspace = true }
-url = { workspace = true, features = ["serde"] }
+url = { workspace = true }
+bytes = { workspace = true }
 
 # Error handling and logging
 anyhow = { workspace = true }
@@ -34,18 +38,15 @@ async-trait = { workspace = true }
 
 # Configuration serialization
 toml = { workspace = true }
-serde_yaml = { workspace = true }
 humantime-serde = { workspace = true }
 
-# Utilities
-bytes = "1.5"
-futures = "0.3"
+# Utilities for protocol implementation
 pin-project-lite = "0.2"
 
 [dev-dependencies]
-tokio-test = { workspace = true }
-wiremock = { workspace = true }
-tempfile = { workspace = true }
+tokio-test = "0.4"
+wiremock = "0.6"
+tempfile = "3.8"
 tracing-test = "0.2"
 
 [features]
