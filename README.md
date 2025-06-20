@@ -57,11 +57,68 @@
 
 ## 📦 Installation
 
-### From Source (Recommended)
+MCP Probe offers multiple installation methods for your convenience:
+
+### 📥 Pre-built Binaries (Recommended)
+
+Download the latest binary for your platform from [GitHub Releases](https://github.com/conikeec/mcp-probe/releases/latest):
+
+- **Linux (x86_64)**: `mcp-probe-x86_64-unknown-linux-gnu.tar.gz`
+- **Linux (ARM64)**: `mcp-probe-aarch64-unknown-linux-gnu.tar.gz`
+- **macOS (Intel)**: `mcp-probe-x86_64-apple-darwin.tar.gz`
+- **macOS (Apple Silicon)**: `mcp-probe-aarch64-apple-darwin.tar.gz`
+- **Windows (x86_64)**: `mcp-probe-x86_64-pc-windows-msvc.zip`
+
+### 🌐 One-liner Install (Linux/macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | bash
+```
+
+**Custom installation directory:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | INSTALL_DIR=~/.local/bin bash
+```
+
+**Install specific version:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | VERSION=v0.1.0 bash
+```
+
+### 🍺 Homebrew (macOS/Linux)
+
+```bash
+# Add the tap
+brew tap conikeec/tap
+
+# Install mcp-probe
+brew install mcp-probe
+
+# Or in one command
+brew install conikeec/tap/mcp-probe
+```
+
+**Update:**
+
+```bash
+brew upgrade mcp-probe
+```
+
+### 📦 Cargo Install
+
+```bash
+cargo install mcp-cli
+```
+
+**Note**: The binary will be named `mcp-probe` even though the crate is `mcp-cli`.
+
+### 🔨 From Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/mcp-probe.git
+git clone https://github.com/conikeec/mcp-probe.git
 cd mcp-probe
 
 # Build and install
@@ -70,6 +127,21 @@ cargo install --path .
 
 # Or run directly
 cargo run -- --help
+```
+
+### 🛡️ Verification
+
+All binaries are provided with SHA256 checksums. You can verify your download:
+
+```bash
+# Download checksum file
+curl -LO https://github.com/conikeec/mcp-probe/releases/latest/download/mcp-probe-x86_64-unknown-linux-gnu.tar.gz.sha256
+
+# Verify (Linux/macOS)
+sha256sum -c mcp-probe-x86_64-unknown-linux-gnu.tar.gz.sha256
+
+# Verify (macOS alternative)
+shasum -a 256 -c mcp-probe-x86_64-apple-darwin.tar.gz.sha256
 ```
 
 ### Quick Start
@@ -710,6 +782,21 @@ cargo install mcp-cli
 [dependencies]
 mcp-core = "0.1.0"
 ```
+
+---
+
+## 💝 Credits & Acknowledgments
+
+**Made with ❤️ in Rust**
+
+This project wouldn't be possible without:
+
+- 🦀 **[Rust Programming Language](https://rust-lang.org/)** - For memory safety, performance, and the amazing ecosystem that makes systems programming a joy
+- 🤖 **[Anthropic](https://anthropic.com/)** - For creating the Model Context Protocol (MCP) specification and advancing the field of AI collaboration tools
+- 🌟 **The Rust Community** - For the incredible crates that power MCP Probe: Ratatui, Tokio, Serde, Clap, and countless others
+- 🛠️ **Open Source Contributors** - Every bug report, feature suggestion, and pull request makes this tool better
+
+Special thanks to the Ratatui team for creating the foundation that makes our beautiful TUI possible! 🎨
 
 ---
 

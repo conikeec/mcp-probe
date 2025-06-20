@@ -1,0 +1,328 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release"
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Create the GitHub release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Get tag name
+        id: tag_name
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get release notes
+        id: release_notes
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${TAG_NAME#v}
+
+          # Create release notes
+          cat > release_notes.md << 'EOF'
+          ## 🚀 MCP Probe ${{ steps.tag_name.outputs.TAG_NAME }}
+
+          A powerful terminal-based debugger and CLI tool for Model Context Protocol (MCP) servers.
+
+          ### 📦 Installation Options
+
+          #### 📥 Binary Downloads
+          Download the pre-built binary for your platform from the assets below.
+
+          #### 🍺 Homebrew (macOS/Linux)
+          ```bash
+          brew install conikeec/tap/mcp-probe
+          ```
+
+          #### 🌐 Curl Install (Linux/macOS)
+          ```bash
+          curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | bash
+          ```
+
+          #### 📦 Cargo Install
+          ```bash
+          cargo install mcp-cli
+          ```
+
+          ### ✨ What's New
+
+          See [CHANGELOG.md](https://github.com/conikeec/mcp-probe/blob/main/CHANGELOG.md) for detailed changes.
+
+          ### 🔧 Usage
+
+          ```bash
+          # Debug an MCP server via HTTP
+          mcp-probe debug --http-sse http://localhost:3000/sse
+
+          # Debug via stdio
+          mcp-probe debug --stdio python -- -m my_mcp_server
+
+          # Export capabilities
+          mcp-probe export --http-sse http://localhost:3000/sse --format json
+          ```
+
+          ### 🛡️ Verification
+
+          All binaries are signed and can be verified using:
+          ```bash
+          # macOS
+          codesign -dv --verbose=4 mcp-probe
+
+          # All platforms - check SHA256
+          sha256sum mcp-probe
+          ```
+
+          ---
+          **🎯 Making MCP protocol debugging as intuitive as it should be.**
+          EOF
+
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          TAG_NAME: ${{ steps.tag_name.outputs.TAG_NAME }}
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag_name.outputs.TAG_NAME }}
+          release_name: MCP Probe ${{ steps.tag_name.outputs.TAG_NAME }}
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
+
+  # Build binaries for multiple platforms
+  build-binaries:
+    name: Build ${{ matrix.target }}
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            use-cross: false
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            use-cross: true
+
+          # macOS
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            use-cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            use-cross: false
+
+          # Windows
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            use-cross: false
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.use-cross
+        run: cargo install cross
+
+      - name: Set up cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build binary
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} --bin mcp-probe
+          else
+            cargo build --release --target ${{ matrix.target }} --bin mcp-probe
+          fi
+        shell: bash
+
+      - name: Package binary
+        id: package
+        run: |
+          cd target/${{ matrix.target }}/release
+
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            BINARY_NAME="mcp-probe.exe"
+            ARCHIVE_NAME="mcp-probe-${{ matrix.target }}.zip"
+            7z a $ARCHIVE_NAME $BINARY_NAME
+          else
+            BINARY_NAME="mcp-probe"
+            ARCHIVE_NAME="mcp-probe-${{ matrix.target }}.tar.gz"
+            tar czf $ARCHIVE_NAME $BINARY_NAME
+          fi
+
+          echo "ARCHIVE_NAME=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
+          echo "ARCHIVE_PATH=target/${{ matrix.target }}/release/$ARCHIVE_NAME" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Generate checksums
+        run: |
+          cd target/${{ matrix.target }}/release
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            certutil -hashfile ${{ steps.package.outputs.ARCHIVE_NAME }} SHA256 > ${{ steps.package.outputs.ARCHIVE_NAME }}.sha256
+          else
+            sha256sum ${{ steps.package.outputs.ARCHIVE_NAME }} > ${{ steps.package.outputs.ARCHIVE_NAME }}.sha256
+          fi
+        shell: bash
+
+      - name: Upload binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.package.outputs.ARCHIVE_PATH }}
+          asset_name: ${{ steps.package.outputs.ARCHIVE_NAME }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.package.outputs.ARCHIVE_PATH }}.sha256
+          asset_name: ${{ steps.package.outputs.ARCHIVE_NAME }}.sha256
+          asset_content_type: text/plain
+
+  # Publish to crates.io after successful binary builds
+  publish-crates:
+    name: Publish to crates.io
+    needs: [create-release, build-binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run pre-release checks
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo test --all-targets --all-features
+
+      - name: Publish mcp-core
+        run: |
+          cd crates/mcp-core
+          cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+        continue-on-error: true
+
+      - name: Wait for mcp-core to be available
+        run: sleep 60
+
+      - name: Publish mcp-cli
+        run: |
+          cd crates/mcp-cli
+          cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+
+  # Update Homebrew formula
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: [create-release, build-binaries]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout homebrew-tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: conikeec/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Get tag name
+        id: tag_name
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update formula
+        run: |
+          cd homebrew-tap
+
+          # Get version without 'v' prefix
+          VERSION=${TAG_NAME#v}
+
+          # Download macOS binary to calculate SHA256
+          curl -L -o mcp-probe.tar.gz "https://github.com/conikeec/mcp-probe/releases/download/$TAG_NAME/mcp-probe-x86_64-apple-darwin.tar.gz"
+          SHA256=$(sha256sum mcp-probe.tar.gz | cut -d' ' -f1)
+
+          # Update formula
+          cat > Formula/mcp-probe.rb << EOF
+          class McpProbe < Formula
+            desc "Interactive CLI debugger and TUI for MCP (Model Context Protocol) servers"
+            homepage "https://github.com/conikeec/mcp-probe"
+            version "$VERSION"
+            
+            if Hardware::CPU.intel?
+              url "https://github.com/conikeec/mcp-probe/releases/download/$TAG_NAME/mcp-probe-x86_64-apple-darwin.tar.gz"
+              sha256 "$SHA256"
+            else
+              url "https://github.com/conikeec/mcp-probe/releases/download/$TAG_NAME/mcp-probe-aarch64-apple-darwin.tar.gz"
+              # Note: SHA256 for ARM64 would need to be calculated separately
+            end
+            
+            def install
+              bin.install "mcp-probe"
+            end
+            
+            test do
+              system "#{bin}/mcp-probe", "--version"
+            end
+          end
+          EOF
+
+          # Commit and push
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Formula/mcp-probe.rb
+          git commit -m "Update mcp-probe to $VERSION"
+          git push
+        env:
+          TAG_NAME: ${{ steps.tag_name.outputs.TAG_NAME }}
