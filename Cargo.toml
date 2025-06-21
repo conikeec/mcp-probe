@@ -16,7 +16,7 @@ homepage = "https://github.com/conikeec/mcp-probe"
 documentation = "https://docs.rs/mcp-probe"
 description = "A production-grade MCP client and debugger built on Rust"
 keywords = ["mcp", "protocol", "ai", "llm", "debugger"]
-categories = ["development-tools", "command-line-utilities", "mcp","llm]
+categories = ["development-tools", "command-line-utilities", "mcp","llm"]
 
 [workspace.dependencies]
 # Async runtime and utilities
