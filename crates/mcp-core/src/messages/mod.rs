@@ -22,7 +22,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use mcp_core::messages::{JsonRpcRequest, InitializeRequest, ProtocolVersion, Implementation};
+//! use mcp_probe_core::messages::{JsonRpcRequest, InitializeRequest, ProtocolVersion, Implementation};
 //! use serde_json::json;
 //!
 //! // Create an initialization request

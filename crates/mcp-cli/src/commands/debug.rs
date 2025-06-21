@@ -6,7 +6,7 @@
 use crate::{cli::DebugArgs, tui::DebuggerApp};
 use anyhow::Result;
 use clap::Parser;
-use mcp_core::{
+use mcp_probe_core::{
     client::McpClient,
     messages::{
         prompts::{ListPromptsRequest, ListPromptsResponse, Prompt},
@@ -147,7 +147,7 @@ impl DebugCommand {
         println!();
 
         // Create and connect client
-        let mut client = mcp_core::client::McpClient::with_defaults(transport_config).await?;
+        let mut client = mcp_probe_core::client::McpClient::with_defaults(transport_config).await?;
         let _server_info = client.connect(client_info).await?;
 
         println!("✅ Connected to MCP server successfully!");

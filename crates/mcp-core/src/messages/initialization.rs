@@ -13,7 +13,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use mcp_core::messages::{InitializeRequest, ProtocolVersion, Capabilities, Implementation};
+//! use mcp_probe_core::messages::{InitializeRequest, ProtocolVersion, Capabilities, Implementation};
 //! use serde_json::json;
 //!
 //! // Create client initialization request
@@ -52,7 +52,7 @@ impl InitializeRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::{InitializeRequest, ProtocolVersion, Capabilities, Implementation};
+    /// use mcp_probe_core::messages::{InitializeRequest, ProtocolVersion, Capabilities, Implementation};
     ///
     /// let request = InitializeRequest::new(
     ///     ProtocolVersion::V2024_11_05,
@@ -80,7 +80,7 @@ impl InitializeRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializeRequest;
+    /// use mcp_probe_core::messages::InitializeRequest;
     ///
     /// let request = InitializeRequest::basic("my-client", "1.0.0");
     /// ```
@@ -97,7 +97,7 @@ impl InitializeRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializeRequest;
+    /// use mcp_probe_core::messages::InitializeRequest;
     /// use serde_json::json;
     ///
     /// let request = InitializeRequest::basic("my-client", "1.0.0")
@@ -143,7 +143,7 @@ impl InitializeResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::{InitializeResponse, ProtocolVersion, Capabilities, Implementation};
+    /// use mcp_probe_core::messages::{InitializeResponse, ProtocolVersion, Capabilities, Implementation};
     ///
     /// let response = InitializeResponse::new(
     ///     ProtocolVersion::V2024_11_05,
@@ -171,7 +171,7 @@ impl InitializeResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializeResponse;
+    /// use mcp_probe_core::messages::InitializeResponse;
     ///
     /// let response = InitializeResponse::basic("my-server", "1.0.0");
     /// ```
@@ -192,7 +192,7 @@ impl InitializeResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializeResponse;
+    /// use mcp_probe_core::messages::InitializeResponse;
     ///
     /// let response = InitializeResponse::basic("my-server", "1.0.0")
     ///     .with_instructions("Use the 'calculator' tool for math operations");
@@ -207,7 +207,7 @@ impl InitializeResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializeResponse;
+    /// use mcp_probe_core::messages::InitializeResponse;
     /// use serde_json::json;
     ///
     /// let response = InitializeResponse::basic("my-server", "1.0.0")
@@ -239,7 +239,7 @@ impl InitializedNotification {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializedNotification;
+    /// use mcp_probe_core::messages::InitializedNotification;
     ///
     /// let notification = InitializedNotification::new();
     /// ```
@@ -254,7 +254,7 @@ impl InitializedNotification {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializedNotification;
+    /// use mcp_probe_core::messages::InitializedNotification;
     /// use serde_json::json;
     /// use std::collections::HashMap;
     ///
@@ -272,7 +272,7 @@ impl InitializedNotification {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::InitializedNotification;
+    /// use mcp_probe_core::messages::InitializedNotification;
     /// use serde_json::json;
     ///
     /// let notification = InitializedNotification::new()
@@ -307,7 +307,7 @@ impl PingRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::PingRequest;
+    /// use mcp_probe_core::messages::PingRequest;
     ///
     /// let ping = PingRequest::new();
     /// ```
@@ -324,7 +324,7 @@ impl PingRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::PingRequest;
+    /// use mcp_probe_core::messages::PingRequest;
     /// use serde_json::json;
     ///
     /// let ping = PingRequest::with_timestamp("2024-01-15T10:30:00Z");
@@ -341,7 +341,7 @@ impl PingRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::PingRequest;
+    /// use mcp_probe_core::messages::PingRequest;
     /// use serde_json::json;
     ///
     /// let ping = PingRequest::new()
@@ -376,7 +376,7 @@ impl PongResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::PongResponse;
+    /// use mcp_probe_core::messages::PongResponse;
     ///
     /// let pong = PongResponse::new();
     /// ```
@@ -393,7 +393,7 @@ impl PongResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::{PingRequest, PongResponse};
+    /// use mcp_probe_core::messages::{PingRequest, PongResponse};
     /// use serde_json::json;
     ///
     /// let ping = PingRequest::with_timestamp("2024-01-15T10:30:00Z");
@@ -410,7 +410,7 @@ impl PongResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::PongResponse;
+    /// use mcp_probe_core::messages::PongResponse;
     /// use serde_json::json;
     ///
     /// let pong = PongResponse::new()

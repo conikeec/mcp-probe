@@ -14,7 +14,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use mcp_core::messages::core::{JsonRpcRequest, JsonRpcResponse, JsonRpcError};
+//! use mcp_probe_core::messages::core::{JsonRpcRequest, JsonRpcResponse, JsonRpcError};
 //! use serde_json::json;
 //!
 //! // Create a request
@@ -64,7 +64,7 @@ impl JsonRpcRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcRequest;
+    /// use mcp_probe_core::messages::core::JsonRpcRequest;
     /// use serde_json::json;
     ///
     /// let request = JsonRpcRequest::new(
@@ -87,7 +87,7 @@ impl JsonRpcRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcRequest;
+    /// use mcp_probe_core::messages::core::JsonRpcRequest;
     ///
     /// let request = JsonRpcRequest::without_params("1", "tools/list");
     /// ```
@@ -117,7 +117,7 @@ impl JsonRpcRequest {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcRequest;
+    /// use mcp_probe_core::messages::core::JsonRpcRequest;
     /// use serde_json::json;
     /// use serde::{Deserialize, Serialize};
     ///
@@ -174,7 +174,7 @@ impl JsonRpcResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcResponse;
+    /// use mcp_probe_core::messages::core::JsonRpcResponse;
     /// use serde_json::json;
     ///
     /// let response = JsonRpcResponse::success("1", json!({"status": "ok"}));
@@ -193,7 +193,7 @@ impl JsonRpcResponse {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::{JsonRpcResponse, JsonRpcError};
+    /// use mcp_probe_core::messages::core::{JsonRpcResponse, JsonRpcError};
     ///
     /// let response = JsonRpcResponse::error(
     ///     "1",
@@ -258,7 +258,7 @@ impl JsonRpcNotification {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcNotification;
+    /// use mcp_probe_core::messages::core::JsonRpcNotification;
     /// use serde_json::json;
     ///
     /// let notification = JsonRpcNotification::new(
@@ -279,7 +279,7 @@ impl JsonRpcNotification {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcNotification;
+    /// use mcp_probe_core::messages::core::JsonRpcNotification;
     ///
     /// let notification = JsonRpcNotification::without_params("ping");
     /// ```
@@ -331,7 +331,7 @@ impl JsonRpcError {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcError;
+    /// use mcp_probe_core::messages::core::JsonRpcError;
     /// use serde_json::json;
     ///
     /// let error = JsonRpcError::new(-32000, "Custom error", Some(json!({"details": "More info"})));
@@ -405,7 +405,7 @@ impl JsonRpcError {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::messages::core::JsonRpcError;
+    /// use mcp_probe_core::messages::core::JsonRpcError;
     ///
     /// let error = JsonRpcError::application_error(
     ///     -32000,

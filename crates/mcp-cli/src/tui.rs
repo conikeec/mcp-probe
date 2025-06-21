@@ -4,7 +4,7 @@
 //! allowing real-time inspection of the negotiation process and server capabilities.
 
 use anyhow::Result;
-use mcp_core::{
+use mcp_probe_core::{
     client::McpClient,
     messages::{
         prompts::{
@@ -124,7 +124,7 @@ impl McpClientExt for McpClient {
                     tracing::info!("📝 Custom parsed result text: {}", result_text);
 
                     Ok(CallToolResponse {
-                        content: vec![mcp_core::messages::tools::ToolResult::Text {
+                        content: vec![mcp_probe_core::messages::tools::ToolResult::Text {
                             text: result_text,
                         }],
                         is_error: Some(false),
@@ -147,15 +147,15 @@ impl McpClientExt for McpClient {
                 tracing::info!("📝 Custom parsed result text: {}", result_text);
 
                 Ok(CallToolResponse {
-                    content: vec![mcp_core::messages::tools::ToolResult::Text {
+                    content: vec![mcp_probe_core::messages::tools::ToolResult::Text {
                         text: result_text,
                     }],
                     is_error: Some(false),
                 })
             }
         } else {
-            Err(mcp_core::McpError::Protocol(
-                mcp_core::error::ProtocolError::RequestFailed {
+            Err(mcp_probe_core::McpError::Protocol(
+                mcp_probe_core::error::ProtocolError::RequestFailed {
                     reason: "No result in tool call response".to_string(),
                 },
             ))
@@ -172,8 +172,8 @@ impl McpClientExt for McpClient {
             let read_response: ReadResourceResponse = serde_json::from_value(result)?;
             Ok(read_response)
         } else {
-            Err(mcp_core::McpError::Protocol(
-                mcp_core::error::ProtocolError::RequestFailed {
+            Err(mcp_probe_core::McpError::Protocol(
+                mcp_probe_core::error::ProtocolError::RequestFailed {
                     reason: "No result in resource read response".to_string(),
                 },
             ))
@@ -195,8 +195,8 @@ impl McpClientExt for McpClient {
             let prompt_response: GetPromptResponse = serde_json::from_value(result)?;
             Ok(prompt_response)
         } else {
-            Err(mcp_core::McpError::Protocol(
-                mcp_core::error::ProtocolError::RequestFailed {
+            Err(mcp_probe_core::McpError::Protocol(
+                mcp_probe_core::error::ProtocolError::RequestFailed {
                     reason: "No result in prompt get response".to_string(),
                 },
             ))
@@ -1926,7 +1926,7 @@ impl DebuggerApp {
                         tracing::info!("📄 Tool returned {} content items:", result.content.len());
                         for (i, content_item) in result.content.iter().enumerate() {
                             match content_item {
-                                mcp_core::messages::tools::ToolResult::Text { text } => {
+                                mcp_probe_core::messages::tools::ToolResult::Text { text } => {
                                     tracing::info!(
                                         "Content[{}]: Text with {} chars: '{}'",
                                         i,
@@ -1934,7 +1934,7 @@ impl DebuggerApp {
                                         if text.len() > 200 { &text[..200] } else { text }
                                     );
                                 }
-                                mcp_core::messages::tools::ToolResult::Image {
+                                mcp_probe_core::messages::tools::ToolResult::Image {
                                     mime_type,
                                     data,
                                 } => {
@@ -1945,7 +1945,9 @@ impl DebuggerApp {
                                         data.len()
                                     );
                                 }
-                                mcp_core::messages::tools::ToolResult::Resource { resource } => {
+                                mcp_probe_core::messages::tools::ToolResult::Resource {
+                                    resource,
+                                } => {
                                     tracing::info!("Content[{}]: Resource {}", i, resource.uri);
                                 }
                             }
@@ -2079,9 +2081,9 @@ impl DebuggerApp {
     /// Format a tool response summary for display
     fn format_tool_response_summary(
         &self,
-        result: &mcp_core::messages::tools::CallToolResponse,
+        result: &mcp_probe_core::messages::tools::CallToolResponse,
     ) -> String {
-        use mcp_core::messages::tools::ToolResult;
+        use mcp_probe_core::messages::tools::ToolResult;
 
         let content_summary = if result.content.is_empty() {
             "No content returned (empty response)".to_string()
@@ -2125,7 +2127,7 @@ impl DebuggerApp {
     /// Format a resource response summary for display
     fn format_resource_response_summary(
         &self,
-        result: &mcp_core::messages::resources::ReadResourceResponse,
+        result: &mcp_probe_core::messages::resources::ReadResourceResponse,
     ) -> String {
         let content_count = result.contents.len();
         if content_count == 0 {
@@ -2139,14 +2141,14 @@ impl DebuggerApp {
 
             // Check content type and format accordingly
             let content_desc = match content {
-                mcp_core::messages::resources::ResourceContent::Text { text, .. } => {
+                mcp_probe_core::messages::resources::ResourceContent::Text { text, .. } => {
                     if text.len() > 100 {
                         format!("{} chars", text.len())
                     } else {
                         text.clone()
                     }
                 }
-                mcp_core::messages::resources::ResourceContent::Blob { blob, .. } => {
+                mcp_probe_core::messages::resources::ResourceContent::Blob { blob, .. } => {
                     format!("{} bytes (binary)", blob.len())
                 }
             };
@@ -2160,7 +2162,7 @@ impl DebuggerApp {
     /// Format a prompt response summary for display
     fn format_prompt_response_summary(
         &self,
-        result: &mcp_core::messages::prompts::GetPromptResponse,
+        result: &mcp_probe_core::messages::prompts::GetPromptResponse,
     ) -> String {
         let msg_count = result.messages.len();
         if msg_count == 0 {
@@ -2169,17 +2171,17 @@ impl DebuggerApp {
             let message = &result.messages[0];
             // Get the content to describe the message
             match &message.content {
-                mcp_core::messages::prompts::PromptContent::Text { text } => {
+                mcp_probe_core::messages::prompts::PromptContent::Text { text } => {
                     if text.len() > 100 {
                         format!("✅ Prompt retrieved: {} chars", text.len())
                     } else {
                         format!("✅ Prompt retrieved: {}", text)
                     }
                 }
-                mcp_core::messages::prompts::PromptContent::Image { .. } => {
+                mcp_probe_core::messages::prompts::PromptContent::Image { .. } => {
                     "✅ Prompt retrieved: Image message".to_string()
                 }
-                mcp_core::messages::prompts::PromptContent::Resource { .. } => {
+                mcp_probe_core::messages::prompts::PromptContent::Resource { .. } => {
                     "✅ Prompt retrieved: Resource message".to_string()
                 }
             }
@@ -4382,7 +4384,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mcp_core::transport::TransportConfig;
+    use mcp_probe_core::transport::TransportConfig;
 
     #[test]
     fn test_debugger_app_creation() -> Result<()> {

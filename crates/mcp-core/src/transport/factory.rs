@@ -21,7 +21,7 @@ use super::http_stream::HttpStreamTransport;
 /// # Examples
 ///
 /// ```rust
-/// use mcp_core::transport::{TransportFactory, TransportConfig};
+/// use mcp_probe_core::transport::{TransportFactory, TransportConfig};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

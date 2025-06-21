@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use mcp_core::transport::{TransportConfig, StdioConfig, HttpSseConfig};
+//! use mcp_probe_core::transport::{TransportConfig, StdioConfig, HttpSseConfig};
 //! use std::time::Duration;
 //!
 //! // Stdio transport configuration
@@ -57,7 +57,7 @@ impl TransportConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::transport::TransportConfig;
+    /// use mcp_probe_core::transport::TransportConfig;
     ///
     /// let config = TransportConfig::stdio("python", &["server.py"]);
     /// ```
@@ -76,7 +76,7 @@ impl TransportConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::transport::TransportConfig;
+    /// use mcp_probe_core::transport::TransportConfig;
     ///
     /// let config = TransportConfig::http_sse("https://api.example.com/mcp").unwrap();
     /// ```
@@ -103,7 +103,7 @@ impl TransportConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::transport::TransportConfig;
+    /// use mcp_probe_core::transport::TransportConfig;
     ///
     /// let config = TransportConfig::http_stream("https://stream.example.com/mcp").unwrap();
     /// ```
@@ -152,10 +152,10 @@ impl TransportConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::transport::TransportConfig;
+    /// use mcp_probe_core::transport::TransportConfig;
     ///
     /// let config = TransportConfig::from_file("config.json")?;
-    /// # Ok::<(), mcp_core::error::McpError>(())
+    /// # Ok::<(), mcp_probe_core::error::McpError>(())
     /// ```
     pub fn from_file(path: impl AsRef<std::path::Path>) -> McpResult<Self> {
         let path = path.as_ref();
@@ -198,11 +198,11 @@ impl TransportConfig {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::transport::TransportConfig;
+    /// use mcp_probe_core::transport::TransportConfig;
     ///
     /// let config = TransportConfig::stdio("python", &["server.py"]);
     /// config.to_file("config.json")?;
-    /// # Ok::<(), mcp_core::error::McpError>(())
+    /// # Ok::<(), mcp_probe_core::error::McpError>(())
     /// ```
     pub fn to_file(&self, path: impl AsRef<std::path::Path>) -> McpResult<()> {
         let path = path.as_ref();

@@ -23,7 +23,7 @@ use thiserror::Error;
 /// # Examples
 ///
 /// ```rust
-/// use mcp_core::error::{McpError, TransportError};
+/// use mcp_probe_core::error::{McpError, TransportError};
 ///
 /// let error = McpError::Transport(TransportError::ConnectionFailed {
 ///     transport_type: "stdio".to_string(),
@@ -377,7 +377,7 @@ impl McpError {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::error::McpError;
+    /// use mcp_probe_core::error::McpError;
     ///
     /// let error = McpError::internal("Something went wrong");
     /// ```
@@ -392,7 +392,7 @@ impl McpError {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::error::McpError;
+    /// use mcp_probe_core::error::McpError;
     /// use std::time::Duration;
     ///
     /// let error = McpError::timeout("server connection", Duration::from_secs(30));
@@ -412,13 +412,13 @@ impl McpError {
     /// # Examples
     ///
     /// ```rust
-    /// use mcp_core::error::{McpError, TransportError};
+    /// use mcp_probe_core::error::{McpError, TransportError};
     ///
     /// let timeout_error = McpError::timeout("connection", std::time::Duration::from_secs(30));
     /// assert!(timeout_error.is_retryable());
     ///
     /// let auth_error = McpError::Auth(
-    ///     mcp_core::error::AuthError::InvalidCredentials {
+    ///     mcp_probe_core::error::AuthError::InvalidCredentials {
     ///         auth_type: "Bearer".to_string(),
     ///         reason: "Invalid token".to_string(),
     ///     }

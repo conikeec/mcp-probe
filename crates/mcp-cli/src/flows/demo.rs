@@ -6,7 +6,7 @@
 
 // Demo flow for MCP negotiation
 use anyhow::Result;
-use mcp_core::{messages::Implementation, transport::TransportConfig};
+use mcp_probe_core::{messages::Implementation, transport::TransportConfig};
 
 use crate::flows::{
     Connect, FlowBuilder, FlowDurationExt, FlowStep, Initialize, ProcessCapabilities, RetryPolicy,

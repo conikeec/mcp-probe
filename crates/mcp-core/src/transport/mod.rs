@@ -15,8 +15,8 @@
 //! # Examples
 //!
 //! ```rust,no_run
-//! use mcp_core::transport::{Transport, TransportFactory, TransportConfig};
-//! use mcp_core::messages::JsonRpcRequest;
+//! use mcp_probe_core::transport::{Transport, TransportFactory, TransportConfig};
+//! use mcp_probe_core::messages::JsonRpcRequest;
 //! use serde_json::json;
 //!
 //! #[tokio::main]

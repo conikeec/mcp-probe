@@ -11,7 +11,7 @@ use serde_json::Value;
 use std::time::{Duration, Instant};
 use tokio::time::timeout;
 
-use mcp_core::{
+use mcp_probe_core::{
     error::McpResult,
     messages::{Implementation, InitializeResponse, ProtocolVersion},
     transport::{Transport, TransportConfig},
@@ -407,8 +407,8 @@ impl FlowHandler for ConnectStep {
         timeout(self.timeout, transport.connect())
             .await
             .map_err(|_| {
-                mcp_core::error::McpError::Transport(
-                    mcp_core::error::TransportError::ConnectionFailed {
+                mcp_probe_core::error::McpError::Transport(
+                    mcp_probe_core::error::TransportError::ConnectionFailed {
                         transport_type: "generic".to_string(),
                         reason: format!("Timeout after {:?}", self.timeout),
                     },
@@ -516,9 +516,9 @@ impl FlowHandler for WaitForResponseStep {
         // In the published version, response handling is done internally by the client
         // Create a mock successful response for compatibility
         let mock_init_response = InitializeResponse {
-            protocol_version: mcp_core::messages::ProtocolVersion::default(),
-            capabilities: mcp_core::messages::Capabilities::default(),
-            server_info: mcp_core::messages::Implementation {
+            protocol_version: mcp_probe_core::messages::ProtocolVersion::default(),
+            capabilities: mcp_probe_core::messages::Capabilities::default(),
+            server_info: mcp_probe_core::messages::Implementation {
                 name: "mock-server".to_string(),
                 version: "1.0.0".to_string(),
                 metadata: std::collections::HashMap::new(),
@@ -619,8 +619,8 @@ impl FlowHandler for ProcessCapabilitiesStep {
             );
             Ok(())
         } else {
-            Err(mcp_core::error::McpError::Protocol(
-                mcp_core::error::ProtocolError::InvalidResponse {
+            Err(mcp_probe_core::error::McpError::Protocol(
+                mcp_probe_core::error::ProtocolError::InvalidResponse {
                     reason: "No initialize response found in context".to_string(),
                 },
             ))
@@ -658,7 +658,7 @@ impl FlowHandler for SendNotificationStep {
             notifications_pending: 1,
         };
 
-        let notification = mcp_core::messages::JsonRpcNotification {
+        let notification = mcp_probe_core::messages::JsonRpcNotification {
             jsonrpc: "2.0".to_string(),
             method: self.notification_type.clone(),
             params: Some(serde_json::json!({})),
@@ -734,7 +734,7 @@ impl NegotiationFlow {
     /// Execute the complete flow with error handling and retries
     pub async fn execute(&mut self, transport_config: TransportConfig) -> Result<&FlowContext> {
         let mut transport =
-            mcp_core::transport::factory::TransportFactory::create(transport_config).await?;
+            mcp_probe_core::transport::factory::TransportFactory::create(transport_config).await?;
 
         for (index, step) in self.steps.iter().enumerate() {
             let mut attempts = 0;

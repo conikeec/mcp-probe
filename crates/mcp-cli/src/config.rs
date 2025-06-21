@@ -11,7 +11,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     /// Default transport configuration
-    pub transport: Option<mcp_core::transport::TransportConfig>,
+    pub transport: Option<mcp_probe_core::transport::TransportConfig>,
 
     /// Client information
     pub client: ClientConfig,

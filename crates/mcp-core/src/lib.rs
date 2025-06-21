@@ -16,7 +16,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use mcp_core::{
+//! use mcp_probe_core::{
 //!     client::{McpClient, ClientConfig},
 //!     transport::TransportConfig,
 //!     messages::Implementation,

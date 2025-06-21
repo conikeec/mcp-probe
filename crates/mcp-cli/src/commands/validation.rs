@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use tokio::time::timeout;
 use tracing::{debug, info};
 
-use mcp_core::{
+use mcp_probe_core::{
     error::McpError,
     messages::{
         core::{JsonRpcId, JsonRpcRequest},

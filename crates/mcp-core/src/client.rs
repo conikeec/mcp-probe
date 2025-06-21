@@ -200,10 +200,10 @@ impl McpClient {
     /// # Example
     ///
     /// ```rust
-    /// use mcp_core::client::{McpClient, ClientConfig, DefaultNotificationHandler};
-    /// use mcp_core::transport::TransportConfig;
+    /// use mcp_probe_core::client::{McpClient, ClientConfig, DefaultNotificationHandler};
+    /// use mcp_probe_core::transport::TransportConfig;
     ///
-    /// # async fn example() -> mcp_core::McpResult<()> {
+    /// # async fn example() -> mcp_probe_core::McpResult<()> {
     /// let transport_config = TransportConfig::stdio("python", &["server.py"]);
     /// let client_config = ClientConfig::default();
     /// let handler = Box::new(DefaultNotificationHandler);
@@ -295,9 +295,9 @@ impl McpClient {
     /// # Example
     ///
     /// ```rust
-    /// use mcp_core::messages::Implementation;
+    /// use mcp_probe_core::messages::Implementation;
     ///
-    /// # async fn example(mut client: mcp_core::client::McpClient) -> mcp_core::McpResult<()> {
+    /// # async fn example(mut client: mcp_probe_core::client::McpClient) -> mcp_probe_core::McpResult<()> {
     /// let client_info = Implementation {
     ///     name: "mcp-probe".to_string(),
     ///     version: "0.1.0".to_string(),

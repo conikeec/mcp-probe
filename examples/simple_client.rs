@@ -1,7 +1,7 @@
 // Simple MCP Client Example
 // This example shows how to connect to an MCP server and perform basic operations
 
-use mcp_core::{
+use mcp_probe_core::{
     client::McpClient,
     transport::{TransportConfig, TransportFactory},
     messages::initialization::Implementation,

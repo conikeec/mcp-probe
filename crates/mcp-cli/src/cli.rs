@@ -4,7 +4,7 @@
 //! arguments and providing a clean interface for various MCP debugging operations.
 
 use clap::{Parser, Subcommand, ValueEnum};
-use mcp_core::transport::TransportConfig;
+use mcp_probe_core::transport::TransportConfig;
 use std::path::PathBuf;
 use url::Url;
 

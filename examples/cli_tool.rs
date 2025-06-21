@@ -1,7 +1,7 @@
 // CLI Tool Example using MCP Probe SDK
 // This example shows how to build a command-line tool that interacts with MCP servers
 
-use mcp_core::{
+use mcp_probe_core::{
     client::McpClient,
     transport::{TransportConfig, TransportFactory},
     messages::initialization::Implementation,
