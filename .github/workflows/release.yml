@@ -276,8 +276,8 @@ jobs:
         run: |
           echo "Waiting for mcp-probe-core to be available on crates.io..."
           for i in {1..12}; do
-            if cargo search mcp-probe-core | grep -q "mcp-probe-core.*0\.1\.54"; then
-              echo "mcp-probe-core v0.1.54 is now available!"
+            if cargo search mcp-probe-core | grep -q "mcp-probe-core.*0\.1\.55"; then
+              echo "mcp-probe-core v0.1.55 is now available!"
               break
             fi
             echo "Attempt $i/12: mcp-probe-core not yet available, waiting 10 seconds..."
@@ -285,8 +285,8 @@ jobs:
           done
 
           # Final check
-          if ! cargo search mcp-probe-core | grep -q "mcp-probe-core.*0\.1\.54"; then
-            echo "ERROR: mcp-probe-core v0.1.54 is still not available after 2 minutes"
+          if ! cargo search mcp-probe-core | grep -q "mcp-probe-core.*0\.1\.55"; then
+            echo "ERROR: mcp-probe-core v0.1.55 is still not available after 2 minutes"
             exit 1
           fi
 
