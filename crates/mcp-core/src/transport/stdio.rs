@@ -9,9 +9,11 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
+use tokio::sync::Mutex;
 use tokio::time::timeout;
 
 use super::{Transport, TransportConfig, TransportInfo};
@@ -35,7 +37,7 @@ pub struct StdioTransport {
     message_receiver: Option<mpsc::UnboundedReceiver<JsonRpcMessage>>,
     outbound_sender: Option<mpsc::UnboundedSender<JsonRpcMessage>>,
     outbound_receiver: Option<mpsc::UnboundedReceiver<JsonRpcMessage>>,
-    pending_requests: HashMap<String, tokio::sync::oneshot::Sender<JsonRpcResponse>>,
+    pending_requests: Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<JsonRpcResponse>>>>,
 }
 
 impl StdioTransport {
@@ -59,7 +61,7 @@ impl StdioTransport {
             message_receiver: None,
             outbound_sender: None,
             outbound_receiver: None,
-            pending_requests: HashMap::new(),
+            pending_requests: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -132,8 +134,16 @@ impl StdioTransport {
             self.outbound_sender = Some(outbound_sender);
 
             // Start I/O processing tasks
-            self.start_io_tasks(stdin, stdout, stderr, inbound_sender, outbound_receiver)
-                .await;
+            let pending_requests = self.pending_requests.clone();
+            self.start_io_tasks(
+                stdin,
+                stdout,
+                stderr,
+                inbound_sender,
+                outbound_receiver,
+                pending_requests,
+            )
+            .await;
 
             // Store the child process
             self.child_process = Some(child);
@@ -156,6 +166,9 @@ impl StdioTransport {
         stderr: tokio::process::ChildStderr,
         inbound_sender: mpsc::UnboundedSender<JsonRpcMessage>,
         mut outbound_receiver: mpsc::UnboundedReceiver<JsonRpcMessage>,
+        pending_requests: Arc<
+            Mutex<HashMap<String, tokio::sync::oneshot::Sender<JsonRpcResponse>>>,
+        >,
     ) {
         // Start stdout reader task
         let stdout_sender = inbound_sender.clone();
@@ -176,9 +189,22 @@ impl StdioTransport {
                             tracing::debug!("Received from stdout: {}", trimmed);
                             match serde_json::from_str::<JsonRpcMessage>(trimmed) {
                                 Ok(message) => {
-                                    if stdout_sender.send(message).is_err() {
-                                        tracing::warn!("Failed to send stdout message to handler");
-                                        break;
+                                    match &message {
+                                        JsonRpcMessage::Response(resp) => {
+                                            if let Some(sender) = pending_requests
+                                                .lock()
+                                                .await
+                                                .remove(&resp.id.to_string())
+                                            {
+                                                let _ = sender.send(resp.clone());
+                                            } else {
+                                                // No pending request; forward normally
+                                                let _ = stdout_sender.send(message);
+                                            }
+                                        }
+                                        _ => {
+                                            let _ = stdout_sender.send(message);
+                                        }
                                     }
                                 }
                                 Err(e) => {
@@ -189,6 +215,22 @@ impl StdioTransport {
                                     );
                                 }
                             }
+
+                            // match serde_json::from_str::<JsonRpcMessage>(trimmed) {
+                            //     Ok(message) => {
+                            //         if stdout_sender.send(message).is_err() {
+                            //             tracing::warn!("Failed to send stdout message to handler");
+                            //             break;
+                            //         }
+                            //     }
+                            //     Err(e) => {
+                            //         tracing::warn!(
+                            //             "Failed to parse JSON message from stdout: {} ({})",
+                            //             e,
+                            //             trimmed
+                            //         );
+                            //     }
+                            // }
                         }
                     }
                     Err(e) => {
@@ -314,7 +356,7 @@ impl Transport for StdioTransport {
         self.kill_process().await?;
 
         // Clear pending requests
-        self.pending_requests.clear();
+        self.pending_requests.lock().await.clear();
 
         // Update transport info
         self.info.mark_disconnected();
@@ -344,10 +386,22 @@ impl Transport for StdioTransport {
         }
 
         let request_id = request.id.clone();
+
+        // Serhii: Here we create one shot channels, I supposed to send request and receive response.
         let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
+        // Serhii: I assume that when response arrives, it must send to response_sender channel,
+        // so we can read it from response_receiver.
+        // But it looks like actually the response is sent to `inbound_sender`, created on line 126
+        //   above
+        //    125: // Create channels for bidirectional communication
+        //    126: let (inbound_sender, inbound_receiver) = mpsc::unbounded_channel();
+        //
+        //
         // Store the response sender for correlation
         self.pending_requests
+            .lock()
+            .await
             .insert(request_id.to_string(), response_sender);
 
         // Send the request
@@ -363,9 +417,12 @@ impl Transport for StdioTransport {
 
         // Wait for response with timeout
         let timeout_duration = timeout_duration.unwrap_or(Duration::from_secs(30));
+
+        // Serhii: We time out here, because `response_receiver` never receives anything,
+        // cause never anything was sent to `inbound_sender` channel.
         let response = timeout(timeout_duration, response_receiver)
             .await
-            .map_err(|_| TransportError::TimeoutError {
+            .map_err(|e| TransportError::TimeoutError {
                 transport_type: "stdio".to_string(),
                 reason: format!(
                     "Request {} timed out after {:?}",
@@ -442,7 +499,12 @@ impl Transport for StdioTransport {
 
         // Handle response correlation
         if let JsonRpcMessage::Response(ref response) = message {
-            if let Some(response_sender) = self.pending_requests.remove(&response.id.to_string()) {
+            let maybe_resopnse_sender = self
+                .pending_requests
+                .lock()
+                .await
+                .remove(&response.id.to_string());
+            if let Some(response_sender) = maybe_resopnse_sender {
                 let _ = response_sender.send(response.clone());
                 // Don't return the response here since it's handled via the oneshot channel
                 return self.receive_message(timeout_duration).await;
@@ -480,10 +542,11 @@ impl Transport for StdioTransport {
             );
         }
 
-        info.add_metadata(
-            "pending_requests",
-            serde_json::json!(self.pending_requests.len()),
-        );
+        // TODO: Figure out how to handle async here
+        // info.add_metadata(
+        //     "pending_requests",
+        //     serde_json::json!(self.pending_requests.lock().await.len()),
+        // );
         info.add_metadata(
             "has_process",
             serde_json::json!(self.child_process.is_some()),
