@@ -6,7 +6,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.54"
+version = "0.1.55"
 authors = ["Chetan Conikee <chetan@conikee.com>"]
 license = "MIT"
 edition = "2021"
@@ -16,7 +16,7 @@ homepage = "https://github.com/conikeec/mcp-probe"
 documentation = "https://docs.rs/mcp-probe"
 description = "A production-grade MCP client and debugger built on Rust"
 keywords = ["mcp", "protocol", "ai", "llm", "debugger"]
-categories = ["development-tools", "command-line-utilities", "anthropic"]
+categories = ["development-tools", "command-line-utilities", "mcp","llm]
 
 [workspace.dependencies]
 # Async runtime and utilities
