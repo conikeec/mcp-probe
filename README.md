@@ -4,6 +4,9 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](Cargo.toml)
 
+![CleanShot 2025-06-21 at 13 48 13@2x](https://github.com/user-attachments/assets/0d989e06-c852-4c02-a77a-9a451e366bbc)
+
+
 **MCP Probe** is a powerful Terminal User Interface (TUI) for debugging, testing, and interacting with Model Context Protocol (MCP) servers. It provides an intuitive, feature-rich alternative to command-line MCP inspectors with real-time protocol analysis, capability discovery, and interactive tool execution.
 
 ```
