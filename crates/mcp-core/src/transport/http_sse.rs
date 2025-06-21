@@ -236,7 +236,8 @@ impl HttpSseTransport {
         let mut request_builder = self
             .http_client
             .post(self.base_url.clone())
-            .header(CONTENT_TYPE, "application/json");
+            .header(CONTENT_TYPE, "application/json")
+            .header("Accept", "application/json, text/event-stream");
 
         // Validate Origin header for security
         self.validate_origin(&request_builder)?;
@@ -588,7 +589,8 @@ impl Transport for HttpSseTransport {
         let mut request_builder = self
             .http_client
             .post(self.base_url.clone())
-            .header(CONTENT_TYPE, "application/json");
+            .header(CONTENT_TYPE, "application/json")
+            .header("Accept", "application/json, text/event-stream");
 
         // Validate Origin header for security
         self.validate_origin(&request_builder)?;
