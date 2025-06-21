@@ -190,10 +190,10 @@ This script installs the latest version of mcp-probe, a powerful CLI debugger
 for Model Context Protocol (MCP) servers.
 
 Usage:
-  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | bash
   
   # Or with custom install directory:
-  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | INSTALL_DIR=~/.local/bin bash
+  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | INSTALL_DIR=~/.local/bin bash
 
 Environment Variables:
   INSTALL_DIR    Installation directory (default: /usr/local/bin)
@@ -201,13 +201,13 @@ Environment Variables:
 
 Examples:
   # Install latest version to /usr/local/bin
-  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | bash
   
   # Install to custom directory
-  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | INSTALL_DIR=~/.local/bin bash
+  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | INSTALL_DIR=~/.local/bin bash
   
   # Install specific version
-  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | VERSION=v0.1.0 bash
+  curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | VERSION=v0.1.55 bash
 
 After installation, run:
   mcp-probe --help
