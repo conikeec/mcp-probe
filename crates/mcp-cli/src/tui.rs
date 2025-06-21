@@ -590,7 +590,8 @@ impl DebuggerApp {
     async fn run_app<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         // Start client initialization in background
         let mut client_initialized = false;
-        let mut initialization_task: Option<tokio::task::JoinHandle<Result<McpClient>>> = None;
+        let mut initialization_task: Option<tokio::task::JoinHandle<anyhow::Result<McpClient>>> =
+            None;
 
         loop {
             // Start client initialization if not already started

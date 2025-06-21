@@ -36,13 +36,7 @@ pub async fn demo_basic_flow() -> Result<()> {
         .build(client_info);
 
     // Simulate execution (would use real transport config in practice)
-    let _transport_config = TransportConfig::Stdio(mcp_core::transport::StdioConfig {
-        command: "echo".to_string(),
-        args: vec!["hello".to_string()],
-        environment: std::collections::HashMap::new(),
-        working_dir: None,
-        timeout: std::time::Duration::from_secs(30),
-    });
+    let _transport_config = TransportConfig::stdio("echo", &["hello"]);
 
     println!("   ✨ Flow created with {} steps", flow.steps.len());
     println!("   🚀 Ready to execute negotiation");

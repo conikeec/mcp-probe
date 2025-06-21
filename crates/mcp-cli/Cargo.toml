@@ -19,7 +19,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Workspace crates
-mcp-core = { version = "0.1.0", path = "../mcp-core" }
+mcp-core = { version = "0.1.51", path = "../mcp-core" }
 
 # Async runtime
 tokio = { workspace = true }
