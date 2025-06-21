@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # MCP Probe installer script
-# Usage: curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | bash
 
 # Colors for output
 RED='\033[0;31m'

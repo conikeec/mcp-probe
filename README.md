@@ -72,19 +72,19 @@ Download the latest binary for your platform from [GitHub Releases](https://gith
 ### 🌐 One-liner Install (Linux/macOS)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | bash
 ```
 
 **Custom installation directory:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | INSTALL_DIR=~/.local/bin bash
+curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | INSTALL_DIR=~/.local/bin bash
 ```
 
 **Install specific version:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | VERSION=v0.1.0 bash
+curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/master/install.sh | VERSION=v0.1.55 bash
 ```
 
 ### 🍺 Homebrew (macOS/Linux)
