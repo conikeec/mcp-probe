@@ -1,0 +1,125 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      specific_version:
+        description: "Specific version (optional, overrides version_type)"
+        required: false
+        type: string
+      skip_tests:
+        description: "Skip running tests before version bump"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  version-bump:
+    name: Automated Version Bump
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run pre-bump checks
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          echo "🔍 Running pre-bump checks..."
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo test --all-targets --all-features
+
+      - name: Determine version argument
+        id: version
+        run: |
+          if [ -n "${{ inputs.specific_version }}" ]; then
+            echo "VERSION_ARG=${{ inputs.specific_version }}" >> $GITHUB_OUTPUT
+            echo "Using specific version: ${{ inputs.specific_version }}"
+          else
+            echo "VERSION_ARG=${{ inputs.version_type }}" >> $GITHUB_OUTPUT
+            echo "Using version type: ${{ inputs.version_type }}"
+          fi
+
+      - name: Make version bump script executable
+        run: chmod +x scripts/version-bump.sh
+
+      - name: Run version bump
+        run: |
+          echo "🚀 Running automated version bump..."
+          ./scripts/version-bump.sh ${{ steps.version.outputs.VERSION_ARG }}
+
+          # Capture the new version for later steps
+          NEW_VERSION=$(grep -E "^version = " Cargo.toml | head -1 | sed 's/version = "//;s/"//')
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "New version: $NEW_VERSION"
+
+      - name: Push changes and tag
+        run: |
+          echo "📤 Pushing changes to repository..."
+          git push origin master
+          git push origin "v$NEW_VERSION"
+          echo "✅ Version bump complete - v$NEW_VERSION"
+
+      - name: Create release summary
+        run: |
+          echo "## 🎉 Version Bump Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**New Version:** \`v$NEW_VERSION\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Bump Type:** ${{ inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.specific_version }}" ]; then
+            echo "**Specific Version:** ${{ inputs.specific_version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 What happens next:" >> $GITHUB_STEP_SUMMARY
+          echo "1. The release workflow will automatically trigger" >> $GITHUB_STEP_SUMMARY
+          echo "2. Binaries will be built for all platforms" >> $GITHUB_STEP_SUMMARY
+          echo "3. Crates will be published to crates.io" >> $GITHUB_STEP_SUMMARY
+          echo "4. GitHub release will be created with assets" >> $GITHUB_STEP_SUMMARY
+          echo "5. Homebrew formula will be updated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Files Updated:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`Cargo.toml\` (workspace version)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`crates/mcp-cli/Cargo.toml\` (dependency version)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Release Workflow](https://github.com/${{ github.repository }}/actions/workflows/release.yml)" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Commit](https://github.com/${{ github.repository }}/commit/$(git rev-parse HEAD))" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Tag](https://github.com/${{ github.repository }}/releases/tag/v$NEW_VERSION)" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,51 @@
+# cargo-release configuration
+# Install: cargo install cargo-release
+# Usage: cargo release patch|minor|major
+
+[workspace]
+# Enable workspace mode
+members = ["crates/mcp-core", "crates/mcp-cli"]
+consolidate-commits = true
+consolidate-pushes = true
+
+# Pre-release checks
+pre-release-hook = [
+    "cargo fmt --all -- --check",
+    "cargo clippy --all-targets --all-features -- -D warnings", 
+    "cargo test --all-targets --all-features",
+    "./scripts/pre-commit.sh --dry-run"
+]
+
+# Git settings
+push = true
+tag = true
+tag-message = "Release {{version}}"
+tag-prefix = "v"
+
+# Commit settings
+sign-commit = false
+sign-tag = false
+publish = false  # We handle publishing via GitHub Actions
+
+# Prevent accidental releases
+allow-branch = ["master", "main"]
+
+# Post-release hook to trigger GitHub Actions
+post-release-hook = [
+    "echo 'Version {{version}} tagged. GitHub Actions will handle publishing.'",
+    "echo 'Monitor progress at: https://github.com/conikeec/mcp-probe/actions'"
+]
+
+# Per-crate configuration
+[crates.mcp-probe-core]
+pre-release-replacements = [
+    { file = "README.md", search = "mcp-probe-core = \"[^\"]*\"", replace = "mcp-probe-core = \"{{version}}\"" },
+    { file = "CHANGELOG.md", search = "## \\[Unreleased\\]", replace = "## [Unreleased]\n\n## [{{version}}] - {{date}}" }
+]
+
+[crates.mcp-cli]
+pre-release-replacements = [
+    { file = "README.md", search = "mcp-cli = \"[^\"]*\"", replace = "mcp-cli = \"{{version}}\"" },
+    { file = "crates/mcp-cli/README.md", search = "mcp-cli = \"[^\"]*\"", replace = "mcp-cli = \"{{version}}\"" }
+]
+depends-on = "mcp-probe-core" 
