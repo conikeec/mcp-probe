@@ -10,25 +10,369 @@ This page provides real-world examples of using MCP Probe to debug, test, and va
 
 ## 🎯 Quick Start Examples
 
-### Example 1: Debugging Playwright MCP Server
+### Example 1: Playwright MCP Server Testing
 
-The Playwright MCP server provides browser automation capabilities. Let's debug it:
+The Playwright MCP server provides browser automation capabilities. Here are comprehensive examples for testing it in different modes:
 
+#### Stdio Transport Examples
+
+**Non-Interactive Mode (Perfect for CI/CD)**
 ```bash
-# Basic debugging (non-interactive)
+# Quick debug check
 mcp-probe debug --non-interactive --stdio npx @playwright/mcp@latest
 
-# Interactive debugging with TUI
-mcp-probe debug --stdio npx @playwright/mcp@latest
+# With detailed output and timing
+mcp-probe debug --non-interactive --show-raw --stdio npx @playwright/mcp@latest --timeout 60
 
-# Expected output:
-# ✅ Connected to MCP server successfully!
-# 📋 Tools (25): browser_navigate, browser_click, browser_type...
-# 📁 Resources (0):
-# 💬 Prompts (0):
+# Run comprehensive tests
+mcp-probe test --stdio npx @playwright/mcp@latest --report --output-dir ./playwright-tests
+
+# Export capabilities for documentation
+mcp-probe export --stdio npx @playwright/mcp@latest --format html --output playwright-capabilities.html
 ```
 
-### Example 2: Testing a Python MCP Server
+**Interactive Mode (Great for Development)**
+```bash
+# Launch interactive TUI for exploration
+mcp-probe debug --stdio npx @playwright/mcp@latest
+
+# Interactive mode with session saving
+mcp-probe debug --stdio npx @playwright/mcp@latest --save-session playwright-debug-$(date +%Y%m%d)
+
+# Interactive testing with specific tool focus
+mcp-probe debug --stdio npx @playwright/mcp@latest --timeout 120
+```
+
+#### HTTP+SSE Transport Examples
+
+**Setting up Playwright MCP Server via HTTP+SSE**
+First, you'll need to run the Playwright MCP server in HTTP mode:
+
+```bash
+# Start Playwright MCP server in HTTP mode (separate terminal)
+npx @playwright/mcp@latest --http --port 3000
+
+# Or with custom configuration
+npx @playwright/mcp@latest --http --port 3000 --host 0.0.0.0
+```
+
+**Non-Interactive HTTP+SSE Testing**
+```bash
+# Basic HTTP+SSE debug
+mcp-probe debug --non-interactive --http-sse http://localhost:3000/sse
+
+# With authentication (if server requires it)
+mcp-probe debug --non-interactive --http-sse http://localhost:3000/sse \
+  --auth-header "Bearer your-api-token"
+
+# Comprehensive HTTP+SSE testing
+mcp-probe test --http-sse http://localhost:3000/sse --report --timeout 90
+
+# Export via HTTP+SSE
+mcp-probe export --http-sse http://localhost:3000/sse --format json --output playwright-http-capabilities.json
+```
+
+**Interactive HTTP+SSE Testing**
+```bash
+# Interactive HTTP+SSE debugging
+mcp-probe debug --http-sse http://localhost:3000/sse
+
+# With custom headers and extended timeout
+mcp-probe debug --http-sse http://localhost:3000/sse \
+  --headers "X-Client-Version=1.0,Accept=application/json" \
+  --timeout 180
+```
+
+#### Expected Output Examples
+
+**Stdio Non-Interactive Output:**
+```
+🔍 MCP Probe - Non-Interactive Debug Mode
+🔌 Transport: stdio
+📡 Client: mcp-probe v0.2.4
+
+✅ Connected to MCP server successfully!
+
+🛠️  Server Capabilities:
+📋 Tools (25):
+  → browser_navigate - Navigate to a URL
+  → browser_click - Perform click on a web page  
+  → browser_type - Type text into editable element
+  → browser_take_screenshot - Take a screenshot
+  → browser_select_option - Select from dropdown
+  → browser_wait_for_selector - Wait for element
+  → browser_evaluate - Execute JavaScript
+  → browser_get_page_content - Get page HTML
+  → browser_scroll - Scroll page
+  → browser_hover - Hover over element
+  ... (and 15 more tools)
+
+📁 Resources (0):
+💬 Prompts (0):
+
+✅ Debug session completed successfully!
+```
+
+**HTTP+SSE Non-Interactive Output:**
+```
+🔍 MCP Probe - Non-Interactive Debug Mode  
+🔌 Transport: http-sse
+🌐 Endpoint: http://localhost:3000/sse
+📡 Client: mcp-probe v0.2.4
+
+✅ Connected to MCP server successfully!
+🔗 Server: playwright-mcp-server v1.0.0
+
+🛠️  Server Capabilities:
+📋 Tools (25): browser_navigate, browser_click, browser_type...
+📁 Resources (0):
+💬 Prompts (0):
+
+⏱️  Response Time: 245ms
+✅ Debug session completed successfully!
+```
+
+#### Validation and Testing Examples
+
+**Comprehensive Playwright Testing**
+```bash
+# Run all test suites
+mcp-probe test --stdio npx @playwright/mcp@latest \
+  --suite all \
+  --report \
+  --output-dir ./playwright-test-results \
+  --timeout 180
+
+# Focus on tool validation
+mcp-probe test --stdio npx @playwright/mcp@latest \
+  --suite tools \
+  --fail-fast \
+  --report
+
+# Validate protocol compliance
+mcp-probe validate --stdio npx @playwright/mcp@latest \
+  --rules schema-validation,tool-parameters \
+  --severity warning \
+  --report playwright-validation.md
+```
+
+**Performance Testing**
+```bash
+# Quick performance check
+time mcp-probe debug --non-interactive --stdio npx @playwright/mcp@latest
+
+# Memory usage analysis
+/usr/bin/time -v mcp-probe debug --stdio npx @playwright/mcp@latest --timeout 60
+
+# Concurrent connection testing
+for i in {1..5}; do
+  mcp-probe debug --non-interactive --stdio npx @playwright/mcp@latest &
+done
+wait
+```
+
+### Example 2: CI/CD Integration with Playwright
+
+Here's a complete CI/CD example for testing Playwright MCP server in your pipeline:
+
+#### GitHub Actions Workflow
+```yaml
+# .github/workflows/test-playwright-mcp.yml
+name: Test Playwright MCP Server
+
+on: [push, pull_request]
+
+jobs:
+  test-playwright-mcp:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install MCP Probe
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/conikeec/mcp-probe/main/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Test Playwright MCP Server (Stdio)
+        run: |
+          echo "🧪 Testing Playwright MCP via Stdio..."
+          mcp-probe test --stdio npx @playwright/mcp@latest \
+            --report \
+            --output-dir ./test-reports/stdio \
+            --timeout 120
+      
+      - name: Test Playwright MCP Server (HTTP+SSE)
+        run: |
+          echo "🌐 Starting Playwright MCP server in HTTP mode..."
+          npx @playwright/mcp@latest --http --port 3000 &
+          sleep 5
+          
+          echo "🧪 Testing Playwright MCP via HTTP+SSE..."
+          mcp-probe test --http-sse http://localhost:3000/sse \
+            --report \
+            --output-dir ./test-reports/http-sse \
+            --timeout 120
+      
+      - name: Generate Documentation
+        run: |
+          echo "📚 Generating capability documentation..."
+          mcp-probe export --stdio npx @playwright/mcp@latest \
+            --format html \
+            --include-timing \
+            --output ./test-reports/playwright-capabilities.html
+      
+      - name: Validate Protocol Compliance
+        run: |
+          echo "✅ Validating protocol compliance..."
+          mcp-probe validate --stdio npx @playwright/mcp@latest \
+            --rules schema-validation,tool-parameters \
+            --severity warning \
+            --report ./test-reports/validation-report.md
+      
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-mcp-test-reports
+          path: ./test-reports/
+          retention-days: 30
+```
+
+#### Shell Script for Local Testing
+```bash
+#!/bin/bash
+# test-playwright-local.sh - Local testing script
+
+set -e
+
+echo "🚀 Playwright MCP Server Testing Suite"
+echo "======================================"
+
+# Create reports directory
+mkdir -p ./test-reports/{stdio,http-sse,validation}
+
+echo ""
+echo "📡 Testing Stdio Transport..."
+echo "-----------------------------"
+mcp-probe test --stdio npx @playwright/mcp@latest \
+  --suite all \
+  --report \
+  --output-dir ./test-reports/stdio \
+  --timeout 180
+
+echo ""
+echo "🌐 Testing HTTP+SSE Transport..."
+echo "-------------------------------"
+
+# Start HTTP server in background
+echo "Starting Playwright MCP server in HTTP mode..."
+npx @playwright/mcp@latest --http --port 3000 &
+HTTP_SERVER_PID=$!
+
+# Wait for server to start
+sleep 3
+
+# Test HTTP+SSE
+mcp-probe test --http-sse http://localhost:3000/sse \
+  --suite all \
+  --report \
+  --output-dir ./test-reports/http-sse \
+  --timeout 180
+
+# Clean up
+kill $HTTP_SERVER_PID 2>/dev/null || true
+
+echo ""
+echo "✅ Validation Testing..."
+echo "----------------------"
+mcp-probe validate --stdio npx @playwright/mcp@latest \
+  --rules all \
+  --severity info \
+  --report ./test-reports/validation/full-validation.md
+
+echo ""
+echo "📊 Performance Benchmarking..."
+echo "-----------------------------"
+echo "Stdio Performance:"
+time mcp-probe debug --non-interactive --stdio npx @playwright/mcp@latest
+
+echo ""
+echo "Memory Usage Analysis:"
+/usr/bin/time -v mcp-probe debug --stdio npx @playwright/mcp@latest --timeout 30 2>&1 | grep -E "(Maximum resident|User time|System time)"
+
+echo ""
+echo "🎉 All tests completed! Check ./test-reports/ for detailed results."
+```
+
+#### Make it executable and run:
+```bash
+chmod +x test-playwright-local.sh
+./test-playwright-local.sh
+```
+
+### Example 3: Troubleshooting Playwright Issues
+
+Common issues when testing Playwright MCP server and their solutions:
+
+#### Connection Issues
+```bash
+# If Playwright MCP server fails to start
+echo "🔍 Debugging Playwright startup issues..."
+
+# Check if npx can find the package
+npx @playwright/mcp@latest --version
+
+# Test with verbose logging
+RUST_LOG=debug mcp-probe debug --stdio npx @playwright/mcp@latest --show-raw
+
+# Try with explicit timeout
+mcp-probe debug --stdio npx @playwright/mcp@latest --timeout 300
+
+# Check if browser dependencies are installed
+npx playwright install
+```
+
+#### HTTP+SSE Specific Issues
+```bash
+# Check if port is available
+lsof -i :3000
+
+# Test server startup manually
+npx @playwright/mcp@latest --http --port 3000 --verbose
+
+# Test with curl to verify HTTP endpoint
+curl -v http://localhost:3000/sse
+
+# Debug with custom headers
+mcp-probe debug --http-sse http://localhost:3000/sse \
+  --headers "Accept=text/event-stream,Cache-Control=no-cache" \
+  --show-raw
+```
+
+#### Performance Issues
+```bash
+# Test with different timeout values
+for timeout in 30 60 120 300; do
+  echo "Testing with ${timeout}s timeout..."
+  if mcp-probe debug --non-interactive --stdio npx @playwright/mcp@latest --timeout $timeout; then
+    echo "✅ Success with ${timeout}s timeout"
+    break
+  fi
+done
+
+# Check system resources
+echo "System resources:"
+free -h
+df -h ~/.mcp-probe/
+```
+
+### Example 4: Testing a Python MCP Server
 
 Let's say you have a Python MCP server for file operations:
 
