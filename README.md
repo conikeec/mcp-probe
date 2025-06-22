@@ -260,7 +260,333 @@ prompts.generate_docs {"style": "technical"}
 
 ---
 
-## 🔧 Section 2: MCP Deployment Troubleshooting
+## 🔍 Section 2: Advanced Protocol Discovery & Session Management
+
+MCP Probe features a sophisticated protocol discovery system that automatically detects and adapts to different MCP protocol versions, providing seamless connectivity across the evolving MCP ecosystem.
+
+### 🚀 Intelligent Protocol Discovery
+
+**Automatic Protocol Detection**: MCP Probe automatically detects the protocol version based on endpoint patterns and server behavior, eliminating manual configuration.
+
+```bash
+# MCP Probe automatically detects the protocol version from these patterns:
+mcp-probe debug --http-sse http://localhost:8931/mcp      # Modern Streamable HTTP
+mcp-probe debug --http-sse http://localhost:8931/sse      # Legacy HTTP+SSE  
+mcp-probe debug --stdio python server.py                 # Standard Transport
+```
+
+### 📊 Protocol Version Matrix
+
+| Protocol Version | Spec Date | Endpoints | Session Management | Transport Method | Status |
+|------------------|-----------|-----------|-------------------|------------------|---------|
+| **Modern Streamable HTTP** | 2025-03-26 | `/mcp` | `Mcp-Session-Id` header | HTTP/SSE Streaming | ✅ Current |
+| **Legacy HTTP+SSE** | 2024-11-05 | `/sse`, `/events` | `sessionId` query param | HTTP + Server-Sent Events | ✅ Supported |
+| **Standard Transport** | 2025-03-26 | `stdio` | N/A (process-based) | Process I/O | ✅ Supported |
+| **WebSocket** | 2025-03-26 | `/ws`, `/websocket` | Connection-based | WebSocket frames | 🔄 Planned |
+| **TCP** | 2025-03-26 | Raw socket | Connection-based | TCP stream | 🔄 Planned |
+
+### 🔧 Session Negotiation Workflows
+
+#### Modern Streamable HTTP (Recommended)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    🌟 MODERN STREAMABLE HTTP WORKFLOW                          │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Client                    MCP Probe                      Server               │
+│    │                          │                             │                  │
+│    │                          │                             │                  │
+│    │──── 1. Connection ──────►│────── POST /mcp ──────────►│                  │
+│    │                          │   Mcp-Session-Id: [auto]   │                  │
+│    │                          │                             │                  │
+│    │◄─── Session Created ─────│◄───── 200 + Session ───────│                  │
+│    │                          │   Mcp-Session-Id: abc123    │                  │
+│    │                          │                             │                  │
+│    │──── 2. Initialize ──────►│────── POST /mcp ──────────►│                  │
+│    │                          │   Mcp-Session-Id: abc123    │                  │
+│    │                          │   {"method": "initialize"}  │                  │
+│    │                          │                             │                  │
+│    │◄─── Capabilities ────────│◄───── 200 OK ──────────────│                  │
+│    │                          │   Server capabilities       │                  │
+│    │                          │                             │                  │
+│    │──── 3. Ready State ─────►│──────── Persistent ────────►│                  │
+│    │                          │      Session Active         │                  │
+│                                                                                 │
+│  ✅ Single endpoint simplicity        🔒 Header-based security                 │
+│  ✅ Built-in session management       ⚡ Automatic resumability                │
+│  ✅ Firewall-friendly                 📊 Full streaming support               │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Legacy HTTP+SSE (Backward Compatibility)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      📡 LEGACY HTTP+SSE WORKFLOW                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Client                    MCP Probe                      Server               │
+│    │                          │                             │                  │
+│    │                          │                             │                  │
+│    │──── 1. Discover ────────►│────── GET /events ────────►│                  │
+│    │                          │   Accept: text/event-stream │                  │
+│    │                          │                             │                  │
+│    │◄─── Session Info ────────│◄───── SSE Stream ──────────│                  │
+│    │                          │   data: {"sessionId": "xyz"}│                  │
+│    │                          │                             │                  │
+│    │──── 2. Initialize ──────►│─── POST /sse?sessionId=xyz─►│                  │
+│    │                          │   {"method": "initialize"}  │                  │
+│    │                          │                             │                  │
+│    │◄─── Capabilities ────────│◄───── 200 OK ──────────────│                  │
+│    │                          │   Server capabilities       │                  │
+│    │                          │                             │                  │
+│    │──── 3. SSE Listen ──────►│─── GET /sse?sessionId=xyz──►│                  │
+│    │                          │   Accept: text/event-stream │                  │
+│    │                          │                             │                  │
+│    │◄─── Event Stream ────────│◄──── SSE Messages ─────────│                  │
+│    │                          │   Continuous updates        │                  │
+│                                                                                 │
+│  🔄 Dual-endpoint architecture       📡 Query-based sessions                   │
+│  🔄 Separate discovery phase         ⚡ Event-driven updates                   │
+│  🔄 Legacy compatibility             📊 SSE streaming support                 │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Standard Transport (Development)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                       🔧 STANDARD TRANSPORT WORKFLOW                           │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Client                    MCP Probe                   Process                 │
+│    │                          │                             │                  │
+│    │                          │                             │                  │
+│    │──── 1. Spawn Process ───►│────── exec/spawn ─────────►│                  │
+│    │                          │   python server.py          │                  │
+│    │                          │                             │                  │
+│    │◄─── Process Ready ───────│◄───── stdin/stdout ────────│                  │
+│    │                          │   Process initialization    │                  │
+│    │                          │                             │                  │
+│    │──── 2. Initialize ──────►│────── JSON-RPC ───────────►│                  │
+│    │                          │   via stdin                  │                  │
+│    │                          │                             │                  │
+│    │◄─── Capabilities ────────│◄───── JSON-RPC ────────────│                  │
+│    │                          │   via stdout                 │                  │
+│    │                          │                             │                  │
+│    │──── 3. Bidirectional ───►│──── stdin/stdout pipes ────►│                  │
+│    │                          │   Full-duplex communication │                  │
+│                                                                                 │
+│  🚀 Direct process control          🔧 Perfect for development                  │
+│  🚀 No network complexity           ⚡ Immediate debugging                      │
+│  🚀 Local filesystem access        📊 Full protocol support                   │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🎯 Interactive vs Non-Interactive Command Sequences
+
+#### Interactive Mode (TUI) - Guided Discovery
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         🖥️  INTERACTIVE TUI WORKFLOW                           │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Phase 1: CONNECTION & DISCOVERY                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ 🔌 Auto-detect Protocol    → 📡 Establish Session    → 🔍 Discover Tools │   │
+│  │ • Parse endpoint URL       • Header/query sessions   • Fuzzy search      │   │
+│  │ • Detect /mcp vs /sse      • Auto-resume capability • Category filter    │   │
+│  │ • Security validation     • Background monitoring   • Real-time index    │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                    ▼                                            │
+│  Phase 2: INTERACTIVE EXECUTION                                                │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ 📋 Parameter Forms         → ⚡ Real-time Execution → 📊 Response Analysis│   │
+│  │ • Smart type detection     • Progress indicators    • Multi-format view  │   │
+│  │ • Schema-driven hints      • Error correlation      • Error highlighting │   │
+│  │ • Auto-completion          • Session persistence    • Export options     │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                    ▼                                            │
+│  Phase 3: ANALYSIS & DEBUGGING                                                 │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ 📈 Session Review         → 🔧 Error Investigation → 📤 Export & Share   │   │
+│  │ • Message history         • Root cause analysis     • JSON export        │   │
+│  │ • Timing metrics          • Fix suggestions         • Session replay     │   │
+│  │ • Protocol trace          • Debug logs              • Report generation  │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  🎮 User Experience: Visual, guided, exploratory                               │
+│  ⌨️  Hotkeys: Tab navigation, / search, Enter execute                          │
+│  🔍 Features: Fuzzy search, parameter forms, real-time feedback               │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Interactive Mode Commands:**
+
+```bash
+# Launch TUI with automatic protocol detection
+mcp-probe debug --http-sse http://localhost:8931/mcp
+
+# TUI Navigation Flow:
+# 1. Tab → Navigate between panels
+# 2. /   → Activate fuzzy search
+# 3. ↑↓  → Browse capabilities
+# 4. Enter → Open parameter form
+# 5. Tab → Execute with parameters
+# 6. V   → Cycle response views
+# 7. F2  → Save session
+
+# Smart Parameter Forms:
+# • Auto-detects field types from JSON Schema
+# • Provides contextual hints and validation
+# • Supports environment variable injection
+# • Real-time syntax validation
+```
+
+#### Non-Interactive Mode (CLI) - Automation-Friendly
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        ⚡ NON-INTERACTIVE CLI WORKFLOW                         │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  Phase 1: RAPID CONNECTION                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ 🚀 Direct Connect         → 📊 Quick Capability Dump                      │   │
+│  │ • Protocol auto-detection  • Structured output                            │   │
+│  │ • No user interaction      • Machine-readable format                      │   │
+│  │ • CI/CD friendly           • Error codes for automation                   │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                    ▼                                            │
+│  Phase 2: BATCH EXECUTION                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ 📝 Command Scripts        → ⚙️  Automated Testing    → 📄 Report Output  │   │
+│  │ • Direct tool execution    • Comprehensive test suite • JSON/CSV export  │   │
+│  │ • Parameter validation     • Protocol compliance     • CI integration    │   │
+│  │ • Bulk operations          • Performance monitoring  • Success/fail codes│   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                    ▼                                            │
+│  Phase 3: PRODUCTION VALIDATION                                                │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ 🔍 Health Checks         → 📊 Performance Analysis → 🚨 Alert Integration│   │
+│  │ • Endpoint discovery      • Response time metrics   • Monitoring systems │   │
+│  │ • Protocol compliance     • Memory usage tracking   • Automated alerts   │   │
+│  │ • Schema validation       • Error rate analysis     • Report webhooks    │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  🤖 Use Cases: CI/CD pipelines, monitoring, automation                         │
+│  ⚡ Features: Zero interaction, structured output, exit codes                  │
+│  🔧 Integration: Scripts, Docker, Kubernetes health checks                     │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Non-Interactive Mode Commands:**
+
+```bash
+# Quick capability overview
+mcp-probe debug --http-sse http://localhost:8931/mcp --non-interactive
+
+# Automated testing with reports
+mcp-probe test --http-sse http://localhost:8931/mcp --report --output-dir ./reports
+
+# Endpoint discovery for load balancers
+mcp-probe test --discover http://api.company.com --report
+
+# CI/CD integration examples
+mcp-probe test --http-sse $MCP_SERVER_URL --fail-fast --timeout 30
+if [ $? -eq 0 ]; then echo "✅ MCP server healthy"; else echo "❌ MCP server failed"; fi
+
+# Batch operations for monitoring
+mcp-probe validate --http-sse http://prod-server/mcp --suite compliance
+```
+
+### 🔍 Advanced Endpoint Discovery
+
+**Multi-Endpoint Discovery**: MCP Probe can discover and test multiple MCP endpoints from a base URL, perfect for load balancers and multi-service deployments.
+
+```bash
+# Discover all MCP endpoints under a domain
+mcp-probe test --discover https://api.company.com
+
+# Discovery automatically tests these patterns:
+# • https://api.company.com/mcp      (Modern)
+# • https://api.company.com/sse      (Legacy)  
+# • https://api.company.com/events   (Discovery)
+# • https://api.company.com/v1/mcp   (Versioned)
+# • https://api.company.com/api/mcp  (Nested)
+
+# Output shows availability and capabilities:
+✅ Modern Streamable HTTP - 47 tools, 3 resources, 2 prompts
+✅ Legacy HTTP+SSE        - 47 tools, 3 resources, 2 prompts  
+❌ Versioned API          - Connection failed
+⚠️  Nested API            - Invalid response format
+```
+
+### 🛡️ Security & Session Management
+
+#### Automatic Security Validation
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          🔒 SECURITY VALIDATION                                │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  🛡️  Connection Security                                                       │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ • HTTPS enforcement for production URLs                                  │   │
+│  │ • Origin validation to prevent DNS rebinding                            │   │
+│  │ • Session ID format validation (cryptographic strength)                 │   │
+│  │ • Certificate verification for remote servers                           │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  🔐 Session Management                                                          │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ • Automatic session discovery and renewal                               │   │
+│  │ • Secure session ID generation and tracking                             │   │
+│  │ • Background session monitoring for ephemeral servers                  │   │
+│  │ • Session resumption after network interruptions                       │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+│  ⚡ Performance & Reliability                                                   │
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │ • Connection pooling and keep-alive                                     │   │
+│  │ • Automatic retry with exponential backoff                              │   │
+│  │ • Request timeout and circuit breaker patterns                          │   │
+│  │ • Memory-efficient streaming for large responses                        │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 📈 Protocol Compliance Testing
+
+**Comprehensive Test Suites**: MCP Probe includes extensive test suites for validating protocol compliance across different versions.
+
+```bash
+# Full protocol compliance testing
+mcp-probe validate --http-sse http://localhost:8931/mcp --suite all
+
+# Specific compliance areas:
+mcp-probe validate --suite initialization  # Connection & handshake
+mcp-probe validate --suite capabilities    # Tool/resource discovery  
+mcp-probe validate --suite schema         # JSON Schema validation
+mcp-probe validate --suite security       # Security best practices
+mcp-probe validate --suite performance    # Response time & throughput
+
+# Generate detailed compliance reports
+mcp-probe validate --suite all --report --output-dir ./compliance-reports
+```
+
+---
+
+## 🔧 Section 3: MCP Deployment Troubleshooting
 
 MCP Probe excels as a diagnostic tool for MCP deployments, providing deep insights into protocol behavior, performance bottlenecks, and integration issues.
 
@@ -511,6 +837,68 @@ KEY=value,API_TOKEN=secret123,ORG=myorg
 
 # Variables automatically injected into tool calls
 tools.api_call {}  # Will include ORG=myorg if tool expects it
+```
+
+---
+
+## 📁 File System Organization
+
+MCP Probe automatically organizes all generated files in a clean, structured directory hierarchy in your home directory.
+
+### 🏠 Directory Structure
+
+```
+~/.mcp-probe/
+├── logs/                    # All log files with timestamps
+│   ├── mcp-probe-debug.log      # TUI mode debug log
+│   └── mcp-probe-YYYYMMDD_HHMMSS.log  # CLI mode logs
+├── reports/                 # All generated reports with date prefixes
+│   ├── YYYYMMDD-test-report-HHMMSS.json
+│   ├── YYYYMMDD-validation-report-HHMMSS.json
+│   └── YYYYMMDD-discovery-report-HHMMSS.json
+├── sessions/               # Saved session files
+│   └── debug-session-YYYYMMDD_HHMMSS.json
+└── config/                 # Configuration files
+    └── mcp-probe.toml
+```
+
+### 🗂️ Path Management Commands
+
+```bash
+# Show directory structure and usage
+mcp-probe paths show
+
+# Clean up old files (dry run)
+mcp-probe paths cleanup --days 30
+
+# Actually clean up files older than 7 days
+mcp-probe paths cleanup --days 7 --force
+
+# Open MCP Probe directory in file manager
+mcp-probe paths open
+```
+
+### 📅 Automatic Date Prefixing
+
+All reports are automatically prefixed with dates for easy organization:
+
+- **Format**: `YYYYMMDD-report-name-HHMMSS.extension`
+- **Example**: `20250622-test-report-143052.json`
+- **Benefits**: Chronological sorting, easy cleanup, no file conflicts
+
+### 🧹 Automated Cleanup
+
+MCP Probe includes intelligent cleanup features:
+
+```bash
+# Show what would be cleaned up
+mcp-probe paths cleanup --days 30
+
+# Clean files older than 30 days
+mcp-probe paths cleanup --days 30 --force
+
+# The paths show command gives cleanup recommendations
+mcp-probe paths show
 ```
 
 ---

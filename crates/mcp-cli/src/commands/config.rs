@@ -14,7 +14,15 @@ pub async fn run(args: ConfigArgs) -> Result<()> {
 
 /// Initialize a new configuration file
 async fn init_config(output: Option<std::path::PathBuf>, template: ConfigTemplate) -> Result<()> {
-    let config_path = output.unwrap_or_else(|| "mcp-probe.toml".into());
+    use crate::paths::get_mcp_probe_paths;
+
+    let config_path = if let Some(path) = output {
+        path
+    } else {
+        // Use centralized path management for default config
+        let paths = get_mcp_probe_paths()?;
+        paths.default_config_file()
+    };
 
     println!(
         "🔧 Initializing configuration file: {}",

@@ -707,7 +707,7 @@ impl McpClient {
         let request_id = request.id.to_string();
         tracing::debug!("Sending single request with ID: {}", request_id);
 
-        // Send request and get response directly from transport
+        // Send request and get response from transport (handles SSE internally)
         let response = self
             .transport
             .send_request(request, Some(timeout_duration))

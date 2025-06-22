@@ -49,6 +49,9 @@ pub enum Commands {
 
     /// Export session data and generate reports
     Export(ExportArgs),
+
+    /// Show MCP Probe directory structure and cleanup options
+    Paths(PathsArgs),
 }
 
 /// Arguments for the debug command
@@ -70,7 +73,7 @@ pub struct DebugArgs {
     #[arg(long)]
     pub show_raw: bool,
 
-    /// Save session to file
+    /// Save session to file (default: auto-generated in ~/.mcp-probe/sessions/)
     #[arg(long)]
     pub save_session: Option<PathBuf>,
 
@@ -117,6 +120,10 @@ pub struct TestArgs {
     /// Test timeout in seconds
     #[arg(long, default_value = "60")]
     pub timeout: u64,
+
+    /// Automatically discover and test all MCP endpoints for a base URL
+    #[arg(long, value_name = "BASE_URL")]
+    pub discover: Option<String>,
 }
 
 /// Arguments for the config command
@@ -186,7 +193,7 @@ pub struct ExportArgs {
     #[arg(short, long, value_enum, default_value = "json")]
     pub format: ExportFormat,
 
-    /// Output file (default: stdout)
+    /// Output file (default: auto-saved with date prefix in ~/.mcp-probe/reports/)
     #[arg(short, long)]
     pub output: Option<PathBuf>,
 
@@ -197,6 +204,33 @@ pub struct ExportArgs {
     /// Include timing information
     #[arg(long)]
     pub include_timing: bool,
+}
+
+/// Arguments for the paths command
+#[derive(Parser, Debug)]
+pub struct PathsArgs {
+    #[command(subcommand)]
+    pub action: PathsAction,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum PathsAction {
+    /// Show directory structure and usage information
+    Show,
+
+    /// Clean up old files (logs, reports, sessions)
+    Cleanup {
+        /// Days to keep files (default: 30)
+        #[arg(long, default_value = "30")]
+        days: u64,
+
+        /// Actually perform cleanup (default: dry run)
+        #[arg(long)]
+        force: bool,
+    },
+
+    /// Open MCP Probe directory in file manager
+    Open,
 }
 
 /// Transport configuration arguments

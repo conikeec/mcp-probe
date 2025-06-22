@@ -70,6 +70,7 @@ pub mod client;
 pub mod error;
 pub mod messages;
 pub mod transport;
+pub mod validation;
 
 // Re-export commonly used types for convenience
 pub use client::{ClientConfig, ClientState, ClientStats, McpClient, ServerInfo};

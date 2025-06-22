@@ -14,7 +14,7 @@ pub async fn run(args: ExportArgs) -> Result<()> {
     println!("📤 Exporting session: {}", args.session.display());
     println!("📝 Format: {:?}", args.format);
 
-    // Read session data (placeholder)
+    // Read and parse session data
     let session_data = std::fs::read_to_string(&args.session)?;
 
     // Convert to requested format
@@ -31,6 +31,19 @@ pub async fn run(args: ExportArgs) -> Result<()> {
         std::fs::write(output_path, exported_data)?;
         println!("✅ Export saved to: {}", output_path.display());
     } else {
+        // Auto-save with date prefix if no output path specified
+        use crate::paths::get_mcp_probe_paths;
+        let paths = get_mcp_probe_paths()?;
+        let extension = match args.format {
+            ExportFormat::Json => "json",
+            ExportFormat::Yaml => "yaml",
+            ExportFormat::Markdown => "md",
+            ExportFormat::Html => "html",
+            ExportFormat::Csv => "csv",
+        };
+        let auto_path = paths.report_file("export", extension);
+        std::fs::write(&auto_path, &exported_data)?;
+        println!("✅ Export auto-saved to: {}", auto_path.display());
         println!("\n{}", exported_data);
     }
 
@@ -181,15 +194,81 @@ fn export_as_csv(session_data: &str, _args: &ExportArgs) -> Result<String> {
     let mut csv = String::new();
 
     // CSV header
-    csv.push_str("timestamp,event_type,data\n");
+    csv.push_str("timestamp,event_type,method,status,duration_ms,message\n");
 
-    // Parse session data and convert to CSV rows (placeholder)
-    let timestamp = chrono::Utc::now().to_rfc3339();
-    csv.push_str(&format!(
-        "{},session_data,\"{}\"\n",
-        timestamp,
-        session_data.replace('"', "\"\"")
-    ));
+    // Try to parse session data as JSON lines
+    for line in session_data.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        // Try to parse as JSON
+        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(line) {
+            let default_timestamp = chrono::Utc::now().to_rfc3339();
+            let timestamp = json_value
+                .get("timestamp")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&default_timestamp);
+
+            let event_type = json_value
+                .get("type")
+                .and_then(|v| v.as_str())
+                .or_else(|| json_value.get("level").and_then(|v| v.as_str()))
+                .unwrap_or("unknown");
+
+            let method = json_value
+                .get("method")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            let status = json_value
+                .get("status")
+                .and_then(|v| v.as_str())
+                .or_else(|| json_value.get("result").map(|_| "success"))
+                .or_else(|| json_value.get("error").map(|_| "error"))
+                .unwrap_or("unknown");
+
+            let duration = json_value
+                .get("duration_ms")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+
+            let message = json_value
+                .get("message")
+                .and_then(|v| v.as_str())
+                .or_else(|| {
+                    json_value
+                        .get("fields")
+                        .and_then(|f| f.get("message"))
+                        .and_then(|v| v.as_str())
+                })
+                .unwrap_or("")
+                .replace('"', "\"\"");
+
+            csv.push_str(&format!(
+                "{},{},{},{},{},{}\n",
+                timestamp, event_type, method, status, duration, message
+            ));
+        } else {
+            // Fallback for non-JSON lines
+            let timestamp = chrono::Utc::now().to_rfc3339();
+            let message = line.replace('"', "\"\"");
+            csv.push_str(&format!(
+                "{},log_line,,unknown,0,\"{}\"\n",
+                timestamp, message
+            ));
+        }
+    }
+
+    // If no data was processed, add a default row
+    if csv.lines().count() <= 1 {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+        csv.push_str(&format!(
+            "{},session_data,,unknown,0,\"Session data could not be parsed\"\n",
+            timestamp
+        ));
+    }
 
     Ok(csv)
 }
@@ -228,7 +307,7 @@ mod tests {
 
         // Test CSV export
         let csv_result = export_as_csv(session_data, &args)?;
-        assert!(csv_result.contains("timestamp,event_type,data"));
+        assert!(csv_result.contains("timestamp,event_type,method,status,duration_ms,message"));
 
         Ok(())
     }

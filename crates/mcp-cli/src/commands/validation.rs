@@ -1273,17 +1273,59 @@ impl ValidationEngine {
 
     /// Test schema validation
     async fn test_schema_validation(&mut self) -> Result<()> {
-        // This would validate all collected messages against their schemas
-        // For now, we'll add a placeholder
+        let test_start = Instant::now();
+
+        // Validate that all collected JSON-RPC messages conform to their schemas
+        let mut schema_errors = Vec::new();
+        let mut validated_count = 0;
+
+        // This could be extended to validate specific message types
+        // For now, we'll validate basic JSON-RPC structure
+        for result in &self.results {
+            if let Some(details) = &result.details {
+                // Basic JSON-RPC validation
+                if details.get("jsonrpc").is_some() {
+                    validated_count += 1;
+                } else if details.get("method").is_some()
+                    || details.get("result").is_some()
+                    || details.get("error").is_some()
+                {
+                    schema_errors.push(format!("Missing 'jsonrpc' field in {}", result.test_id));
+                }
+            }
+        }
+
+        let status = if schema_errors.is_empty() {
+            ValidationStatus::Pass
+        } else {
+            ValidationStatus::Warning
+        };
+
+        let message = if schema_errors.is_empty() {
+            format!(
+                "All {} messages conform to expected schemas",
+                validated_count
+            )
+        } else {
+            format!(
+                "Found {} schema issues out of {} validated messages",
+                schema_errors.len(),
+                validated_count
+            )
+        };
 
         self.add_result(ValidationResult {
             test_id: "schema_validation".to_string(),
             test_name: "Schema Validation".to_string(),
             category: ValidationCategory::Schema,
-            status: ValidationStatus::Pass,
-            message: "All messages conform to expected schemas".to_string(),
-            details: None,
-            duration: Duration::from_millis(10),
+            status,
+            message,
+            details: if schema_errors.is_empty() {
+                None
+            } else {
+                Some(json!({"errors": schema_errors}))
+            },
+            duration: test_start.elapsed(),
             timestamp: Utc::now(),
         });
 
@@ -1322,8 +1364,8 @@ impl ValidationEngine {
             results: self.results.clone(),
             server_info: None, // Would be populated with actual server info
             performance: PerformanceMetrics {
-                initialization_time: Duration::from_millis(100), // Placeholder
-                average_request_time: Duration::from_millis(50), // Placeholder
+                initialization_time: self.calculate_initialization_time(),
+                average_request_time: self.calculate_average_request_time(),
                 total_requests: self.results.len(),
                 failed_requests: self
                     .results
@@ -1344,6 +1386,33 @@ impl ValidationEngine {
         };
 
         Ok(report)
+    }
+
+    /// Calculate initialization time from test results
+    fn calculate_initialization_time(&self) -> Duration {
+        self.results
+            .iter()
+            .find(|r| r.test_id == "initialization" || r.test_name.contains("Initialization"))
+            .map(|r| r.duration)
+            .unwrap_or_else(|| Duration::from_millis(0))
+    }
+
+    /// Calculate average request time from test results
+    fn calculate_average_request_time(&self) -> Duration {
+        let request_durations: Vec<Duration> = self
+            .results
+            .iter()
+            .filter(|r| !r.test_id.contains("initialization") && !r.test_id.contains("summary"))
+            .map(|r| r.duration)
+            .collect();
+
+        if request_durations.is_empty() {
+            Duration::from_millis(0)
+        } else {
+            let total_nanos: u128 = request_durations.iter().map(|d| d.as_nanos()).sum();
+            let average_nanos = total_nanos / request_durations.len() as u128;
+            Duration::from_nanos(average_nanos as u64)
+        }
     }
 
     /// Calculate validation summary

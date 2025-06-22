@@ -64,6 +64,16 @@ pub async fn run(args: ValidateArgs) -> Result<()> {
             if let Some(report_path) = &args.report {
                 generate_validation_report(&report, report_path)?;
                 println!("📄 Validation report saved to: {}", report_path.display());
+            } else {
+                // Auto-generate report with date prefix if no path specified
+                use crate::paths::get_mcp_probe_paths;
+                let paths = get_mcp_probe_paths()?;
+                let auto_report_path = paths.report_file("validation-report", "json");
+                generate_validation_report(&report, &auto_report_path)?;
+                println!(
+                    "📄 Validation report auto-saved to: {}",
+                    auto_report_path.display()
+                );
             }
 
             // Print summary

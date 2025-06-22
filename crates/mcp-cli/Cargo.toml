@@ -61,6 +61,10 @@ url = { workspace = true }
 tempfile = "3.8"
 jsonschema = "0.18"
 
+# Table and spinner display
+tabled = "0.15"
+indicatif = "0.17"
+
 [dev-dependencies]
 criterion = { workspace = true }
 

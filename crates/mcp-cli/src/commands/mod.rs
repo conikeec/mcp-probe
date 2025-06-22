@@ -8,6 +8,7 @@ use anyhow::Result;
 pub mod config;
 pub mod debug;
 pub mod export;
+pub mod paths;
 pub mod test;
 pub mod validate;
 

@@ -986,7 +986,7 @@ impl DebuggerApp {
         Ok(())
     }
 
-    /// Handle keyboard events
+    /// Handle keyboard events (with enhanced safety checks)
     async fn handle_key_event(&mut self, key: KeyCode) -> Result<bool> {
         // Handle search mode first
         if self.ui_state.search_active {
@@ -1249,53 +1249,92 @@ impl DebuggerApp {
                     _ => {
                         // Handle parameter form text input when in edit mode
                         if self.ui_state.parameter_dialog_open && self.ui_state.param_edit_mode {
-                            // Safety check: ensure param_selected_field is within bounds
+                            // Enhanced safety checks with proper error handling
+                            if self.ui_state.param_field_names.is_empty() {
+                                tracing::debug!("No parameter fields available for input");
+                                return Ok(false);
+                            }
+
                             if self.ui_state.param_selected_field
-                                < self.ui_state.param_field_names.len()
+                                >= self.ui_state.param_field_names.len()
                             {
-                                if let Some(field_name) = self
-                                    .ui_state
-                                    .param_field_names
-                                    .get(self.ui_state.param_selected_field)
-                                {
-                                    let field_name = field_name.clone();
-                                    if let Some(field) =
-                                        self.ui_state.param_fields.get_mut(&field_name)
-                                    {
-                                        // Handle text input for the current field
-                                        match key {
-                                            KeyCode::Char(c) => {
-                                                field.value.push(c);
-                                                tracing::debug!("Added char '{}' to field '{}', value now: '{}'", c, field_name, field.value);
-                                            }
-                                            KeyCode::Backspace => {
-                                                field.value.pop();
-                                                tracing::debug!(
-                                                    "Removed char from field '{}', value now: '{}'",
-                                                    field_name,
-                                                    field.value
-                                                );
-                                            }
-                                            _ => {}
-                                        }
-                                    } else {
-                                        tracing::error!(
-                                            "Field '{}' not found in param_fields HashMap",
-                                            field_name
-                                        );
-                                    }
-                                } else {
-                                    tracing::error!(
-                                        "No field name at index {} in param_field_names",
-                                        self.ui_state.param_selected_field
-                                    );
-                                }
-                            } else {
-                                tracing::error!(
-                                    "param_selected_field {} is out of bounds (len: {})",
+                                tracing::warn!(
+                                    "param_selected_field {} is out of bounds (len: {}), resetting to 0",
                                     self.ui_state.param_selected_field,
                                     self.ui_state.param_field_names.len()
                                 );
+                                self.ui_state.param_selected_field = 0;
+                                return Ok(false);
+                            }
+
+                            // Safe indexing with bounds check
+                            let field_name = match self
+                                .ui_state
+                                .param_field_names
+                                .get(self.ui_state.param_selected_field)
+                            {
+                                Some(name) => name.clone(),
+                                None => {
+                                    tracing::error!(
+                                        "No field name at index {} despite bounds check",
+                                        self.ui_state.param_selected_field
+                                    );
+                                    return Ok(false);
+                                }
+                            };
+
+                            // Safe field mutation with error handling
+                            if let Some(field) = self.ui_state.param_fields.get_mut(&field_name) {
+                                match key {
+                                    KeyCode::Char(c) => {
+                                        // Validate character input to prevent crashes
+                                        if c.is_control() && c != '\t' && c != '\n' {
+                                            tracing::debug!("Ignoring control character: {:?}", c);
+                                            return Ok(false);
+                                        }
+
+                                        // Limit field length to prevent memory issues
+                                        if field.value.len() >= 1000 {
+                                            tracing::warn!(
+                                                "Field '{}' has reached maximum length",
+                                                field_name
+                                            );
+                                            return Ok(false);
+                                        }
+
+                                        field.value.push(c);
+                                        tracing::debug!(
+                                            "Added char '{}' to field '{}', value now has {} chars",
+                                            c,
+                                            field_name,
+                                            field.value.len()
+                                        );
+                                    }
+                                    KeyCode::Backspace => {
+                                        if !field.value.is_empty() {
+                                            field.value.pop();
+                                            tracing::debug!(
+                                                "Removed char from field '{}', value now has {} chars",
+                                                field_name,
+                                                field.value.len()
+                                            );
+                                        }
+                                    }
+                                    _ => {
+                                        // Ignore other keys safely
+                                        tracing::debug!(
+                                            "Ignoring key in parameter form: {:?}",
+                                            key
+                                        );
+                                    }
+                                }
+                            } else {
+                                tracing::error!(
+                                    "Field '{}' not found in param_fields HashMap",
+                                    field_name
+                                );
+                                // Don't crash, just log the error
+                                return Ok(false);
                             }
                         }
                     }
@@ -1652,7 +1691,7 @@ impl DebuggerApp {
         }
     }
 
-    /// Build parameter form from JSON schema
+    /// Build parameter form from JSON schema using validation utility
     fn build_parameter_form_from_schema(&mut self, schema: &Value) {
         // Debug: Log the schema to see its structure
         tracing::debug!(
@@ -1660,105 +1699,100 @@ impl DebuggerApp {
             serde_json::to_string_pretty(schema).unwrap_or_else(|_| "Invalid JSON".to_string())
         );
 
-        // Handle different schema formats
-        let properties = if let Some(props) = schema.get("properties") {
-            props
-        } else if schema.is_object() && !schema.as_object().unwrap().is_empty() {
-            // Schema might be the properties object directly
-            schema
-        } else {
-            tracing::debug!("No properties found in schema");
+        // Use the validation utility to extract parameter hints
+        use mcp_probe_core::validation::ParameterValidator;
+        let validator = ParameterValidator::new();
+        let parameter_hints = validator.extract_parameter_hints(schema);
+
+        if parameter_hints.is_empty() {
+            tracing::debug!("No parameter hints extracted from schema");
             return;
-        };
+        }
 
-        if let Some(props_obj) = properties.as_object() {
-            let required_fields: Vec<String> = schema
-                .get("required")
-                .and_then(|r| r.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(String::from))
-                        .collect()
-                })
-                .unwrap_or_default();
+        tracing::debug!(
+            "Extracted {} parameter hints from schema",
+            parameter_hints.len()
+        );
 
+        // Collect and sort parameters (required first, then alphabetical)
+        let mut sorted_params: Vec<_> = parameter_hints.iter().collect();
+        sorted_params.sort_by(|(a_name, a_hint), (b_name, b_hint)| {
+            match (a_hint.required, b_hint.required) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => a_name.cmp(b_name),
+            }
+        });
+
+        // Build parameter form from sorted hints
+        for (param_name, hint) in sorted_params {
             tracing::debug!(
-                "Found {} properties, {} required: {:?}",
-                props_obj.len(),
-                required_fields.len(),
-                required_fields
+                "Adding parameter: {} (type: {}, required: {}, desc: {:?})",
+                param_name,
+                hint.param_type,
+                hint.required,
+                hint.description
             );
 
-            // First, collect and sort parameter names for consistent ordering
-            let mut param_names: Vec<String> = props_obj.keys().cloned().collect();
-            // Sort so required fields come first, then alphabetical
-            param_names.sort_by(|a, b| {
-                let a_required = required_fields.contains(a);
-                let b_required = required_fields.contains(b);
-                match (a_required, b_required) {
-                    (true, false) => std::cmp::Ordering::Less,
-                    (false, true) => std::cmp::Ordering::Greater,
-                    _ => a.cmp(b),
+            // Add to ordered list for consistent access
+            self.ui_state.param_field_names.push(param_name.clone());
+
+            // Determine default value
+            let default_value = if let Some(default) = &hint.default_value {
+                match default {
+                    Value::String(s) => s.clone(),
+                    Value::Number(n) => n.to_string(),
+                    Value::Bool(b) => b.to_string(),
+                    _ => String::new(),
                 }
-            });
+            } else {
+                String::new()
+            };
 
-            for param_name in param_names {
-                let param_schema = &props_obj[&param_name];
-                let description = param_schema
-                    .get("description")
-                    .and_then(|d| d.as_str())
-                    .map(String::from)
-                    .or_else(|| {
-                        // Try alternative description paths
-                        param_schema
-                            .get("title")
-                            .and_then(|t| t.as_str())
-                            .map(String::from)
-                    });
+            // Enhanced description with additional schema info
+            let enhanced_description = if let Some(base_desc) = &hint.description {
+                let mut desc = base_desc.clone();
 
-                let param_type = param_schema
-                    .get("type")
-                    .and_then(|t| t.as_str())
-                    .map(String::from)
-                    .or_else(|| {
-                        // Infer type from other properties
-                        if param_schema.get("enum").is_some() {
-                            Some("enum".to_string())
-                        } else if param_schema.get("properties").is_some() {
-                            Some("object".to_string())
-                        } else if param_schema.get("items").is_some() {
-                            Some("array".to_string())
-                        } else {
-                            Some("string".to_string()) // Default fallback
-                        }
-                    });
+                if let Some(format) = &hint.format {
+                    desc.push_str(&format!(" (format: {})", format));
+                }
 
-                let is_required = required_fields.contains(&param_name);
+                if let Some(pattern) = &hint.pattern {
+                    desc.push_str(&format!(" (pattern: {})", pattern));
+                }
 
-                tracing::debug!(
-                    "Adding parameter: {} (type: {:?}, required: {}, desc: {:?})",
-                    param_name,
-                    param_type,
-                    is_required,
-                    description
-                );
+                if let Some(min_len) = hint.min_length {
+                    desc.push_str(&format!(" (min length: {})", min_len));
+                }
 
-                // Add to ordered list for consistent access
-                self.ui_state.param_field_names.push(param_name.clone());
+                if let Some(max_len) = hint.max_length {
+                    desc.push_str(&format!(" (max length: {})", max_len));
+                }
 
-                // Add to HashMap for quick lookup
-                self.ui_state.param_fields.insert(
-                    param_name.clone(),
-                    ParamField {
-                        value: String::new(),
-                        required: is_required,
-                        description,
-                        param_type,
-                    },
-                );
-            }
-        } else {
-            tracing::debug!("Properties is not an object: {:?}", properties);
+                if let Some(enum_vals) = &hint.enum_values {
+                    let enum_str = enum_vals
+                        .iter()
+                        .map(|v| v.as_str().unwrap_or("?"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    desc.push_str(&format!(" (options: {})", enum_str));
+                }
+
+                Some(desc)
+            } else {
+                None
+            };
+
+            // Create parameter field
+            self.ui_state.param_fields.insert(
+                param_name.clone(),
+                ParamField {
+                    value: default_value,
+                    required: hint.required,
+                    description: enhanced_description,
+                    param_type: Some(hint.param_type.clone()),
+                },
+            );
         }
 
         tracing::debug!(
@@ -1896,6 +1930,45 @@ impl DebuggerApp {
                 }
             }
 
+            // Find tool schema for validation
+            let tool_schema = self
+                .capabilities
+                .tools
+                .iter()
+                .find(|t| t.full_name == tool_name || t.name == tool_name)
+                .and_then(|t| t.parameters.as_ref());
+
+            // Apply schema-based parameter validation and transformation
+            if let Some(schema) = tool_schema {
+                use mcp_probe_core::validation::ParameterValidator;
+
+                let validator = ParameterValidator::new();
+                let validation_result = validator.validate(schema, &params);
+
+                if !validation_result.is_valid {
+                    let error_msg = format!(
+                        "Parameter validation failed for tool '{}': {}",
+                        tool_name,
+                        validation_result
+                            .errors
+                            .iter()
+                            .map(|e| e.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                    self.add_error(error_msg);
+                    return Ok(());
+                }
+
+                // Use validated and transformed parameters
+                params = validation_result.validated_params;
+
+                // Log transformations for user awareness
+                for transformation in &validation_result.transformations {
+                    tracing::info!("🔧 {}", transformation);
+                }
+            }
+
             tracing::info!("=== EXECUTING TOOL ===");
             tracing::info!("Tool name: '{}'", tool_name);
             tracing::info!(
@@ -1992,7 +2065,7 @@ impl DebuggerApp {
                                                 if value.is_array() {
                                                     format!(
                                                         "length {}",
-                                                        value.as_array().unwrap().len()
+                                                        value.as_array().map_or(0, |arr| arr.len())
                                                     )
                                                 } else {
                                                     "".to_string()

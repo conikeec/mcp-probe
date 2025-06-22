@@ -196,10 +196,19 @@ impl Config {
     /// Get default configuration file path
     #[allow(dead_code)]
     pub fn default_path() -> PathBuf {
-        dirs::config_dir()
-            .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| ".".into()))
-            .join("mcp-probe")
-            .join("config.toml")
+        use crate::paths::get_mcp_probe_paths;
+
+        // Use centralized path management
+        match get_mcp_probe_paths() {
+            Ok(paths) => paths.default_config_file(),
+            Err(_) => {
+                // Fallback to old behavior if path management fails
+                dirs::config_dir()
+                    .unwrap_or_else(|| dirs::home_dir().unwrap_or_else(|| ".".into()))
+                    .join("mcp-probe")
+                    .join("config.toml")
+            }
+        }
     }
 }
 

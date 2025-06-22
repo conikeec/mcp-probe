@@ -34,6 +34,9 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
+# JSON Schema validation
+jsonschema = "0.18"
+
 # Async trait support
 async-trait = { workspace = true }
 
@@ -43,6 +46,7 @@ humantime-serde = { workspace = true }
 
 # Utilities for protocol implementation
 pin-project-lite = "0.2"
+regex = "1.10"
 
 [dev-dependencies]
 tokio-test = "0.4"
