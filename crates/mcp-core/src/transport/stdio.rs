@@ -6,12 +6,13 @@
 //! MCP server implementations.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 use tokio::time::timeout;
 
 use super::{Transport, TransportConfig, TransportInfo};
@@ -35,7 +36,7 @@ pub struct StdioTransport {
     message_receiver: Option<mpsc::UnboundedReceiver<JsonRpcMessage>>,
     outbound_sender: Option<mpsc::UnboundedSender<JsonRpcMessage>>,
     outbound_receiver: Option<mpsc::UnboundedReceiver<JsonRpcMessage>>,
-    pending_requests: HashMap<String, tokio::sync::oneshot::Sender<JsonRpcResponse>>,
+    pending_requests: Arc<Mutex<HashMap<String, tokio::sync::oneshot::Sender<JsonRpcResponse>>>>,
 }
 
 impl StdioTransport {
@@ -59,7 +60,7 @@ impl StdioTransport {
             message_receiver: None,
             outbound_sender: None,
             outbound_receiver: None,
-            pending_requests: HashMap::new(),
+            pending_requests: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -132,8 +133,16 @@ impl StdioTransport {
             self.outbound_sender = Some(outbound_sender);
 
             // Start I/O processing tasks
-            self.start_io_tasks(stdin, stdout, stderr, inbound_sender, outbound_receiver)
-                .await;
+            let pending_requests = self.pending_requests.clone();
+            self.start_io_tasks(
+                stdin,
+                stdout,
+                stderr,
+                inbound_sender,
+                outbound_receiver,
+                pending_requests,
+            )
+            .await;
 
             // Store the child process
             self.child_process = Some(child);
@@ -156,9 +165,13 @@ impl StdioTransport {
         stderr: tokio::process::ChildStderr,
         inbound_sender: mpsc::UnboundedSender<JsonRpcMessage>,
         mut outbound_receiver: mpsc::UnboundedReceiver<JsonRpcMessage>,
+        pending_requests: Arc<
+            Mutex<HashMap<String, tokio::sync::oneshot::Sender<JsonRpcResponse>>>,
+        >,
     ) {
         // Start stdout reader task
         let stdout_sender = inbound_sender.clone();
+        let pending_requests_clone = pending_requests.clone();
         tokio::spawn(async move {
             let mut stdout_reader = BufReader::new(stdout);
             let mut line = String::new();
@@ -176,6 +189,21 @@ impl StdioTransport {
                             tracing::debug!("Received from stdout: {}", trimmed);
                             match serde_json::from_str::<JsonRpcMessage>(trimmed) {
                                 Ok(message) => {
+                                    // Handle response correlation for request/response messages
+                                    if let JsonRpcMessage::Response(ref response) = message {
+                                        let maybe_response_sender = pending_requests_clone
+                                            .lock()
+                                            .await
+                                            .remove(&response.id.to_string());
+
+                                        if let Some(response_sender) = maybe_response_sender {
+                                            // Send response directly to the waiting request
+                                            let _ = response_sender.send(response.clone());
+                                            continue; // Don't send to inbound_sender for responses
+                                        }
+                                    }
+
+                                    // Send other messages (notifications, server requests) to inbound_sender
                                     if stdout_sender.send(message).is_err() {
                                         tracing::warn!("Failed to send stdout message to handler");
                                         break;
@@ -314,7 +342,7 @@ impl Transport for StdioTransport {
         self.kill_process().await?;
 
         // Clear pending requests
-        self.pending_requests.clear();
+        self.pending_requests.lock().await.clear();
 
         // Update transport info
         self.info.mark_disconnected();
@@ -348,6 +376,8 @@ impl Transport for StdioTransport {
 
         // Store the response sender for correlation
         self.pending_requests
+            .lock()
+            .await
             .insert(request_id.to_string(), response_sender);
 
         // Send the request
@@ -440,14 +470,8 @@ impl Transport for StdioTransport {
                 })?
         };
 
-        // Handle response correlation
-        if let JsonRpcMessage::Response(ref response) = message {
-            if let Some(response_sender) = self.pending_requests.remove(&response.id.to_string()) {
-                let _ = response_sender.send(response.clone());
-                // Don't return the response here since it's handled via the oneshot channel
-                return self.receive_message(timeout_duration).await;
-            }
-        }
+        // Response correlation is now handled in the stdout reader task
+        // This method now only handles notifications and server-to-client requests
 
         // Update statistics
         match &message {
@@ -480,10 +504,11 @@ impl Transport for StdioTransport {
             );
         }
 
-        info.add_metadata(
-            "pending_requests",
-            serde_json::json!(self.pending_requests.len()),
-        );
+        // TODO: Figure out how to handle async here
+        // info.add_metadata(
+        //     "pending_requests",
+        //     serde_json::json!(self.pending_requests.lock().await.len()),
+        // );
         info.add_metadata(
             "has_process",
             serde_json::json!(self.child_process.is_some()),
