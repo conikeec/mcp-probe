@@ -65,8 +65,8 @@ dirs = "5.0"
 criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.8"
 
-# New dependencies
-jsonschema = "0.18"
+# New dependencies (removed external validation libs)
+# jsonschema = "0.18"  # Using simplified validation instead
 
 [profile.release]
 lto = true

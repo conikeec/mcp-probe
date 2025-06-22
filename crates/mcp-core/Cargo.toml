@@ -34,8 +34,8 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
-# JSON Schema validation
-jsonschema = "0.18"
+# JSON Schema validation (disabled for now - using simplified validation)
+# jsonschema = "0.18"
 
 # Async trait support
 async-trait = { workspace = true }

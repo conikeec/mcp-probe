@@ -59,7 +59,7 @@ url = { workspace = true }
 
 # Validation
 tempfile = "3.8"
-jsonschema = "0.18"
+# jsonschema = "0.18"  # Using simplified validation in mcp-core instead
 
 # Table and spinner display
 tabled = "0.15"

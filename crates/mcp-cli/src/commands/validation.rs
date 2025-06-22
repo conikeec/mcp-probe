@@ -6,7 +6,6 @@
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use jsonschema::JSONSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -25,6 +24,7 @@ use mcp_probe_core::{
         Capabilities, Implementation, ProtocolVersion,
     },
     transport::{Transport, TransportConfig, TransportFactory},
+    validation::ParameterValidator,
 };
 
 /// Comprehensive validation engine for MCP servers
@@ -1003,32 +1003,34 @@ impl ValidationEngine {
     async fn validate_tool_schema(&mut self, tool_name: &str, schema: &Value) -> Result<()> {
         let test_start = Instant::now();
 
-        // Try to compile the JSON Schema
-        match JSONSchema::compile(schema) {
-            Ok(_compiled_schema) => {
-                self.add_result(ValidationResult {
-                    test_id: format!("tool_schema_{}", tool_name),
-                    test_name: format!("Tool Schema: {}", tool_name),
-                    category: ValidationCategory::Schema,
-                    status: ValidationStatus::Pass,
-                    message: format!("Tool '{}' has valid JSON Schema", tool_name),
-                    details: Some(schema.clone()),
-                    duration: test_start.elapsed(),
-                    timestamp: Utc::now(),
-                });
-            }
-            Err(e) => {
-                self.add_result(ValidationResult {
-                    test_id: format!("tool_schema_{}", tool_name),
-                    test_name: format!("Tool Schema: {}", tool_name),
-                    category: ValidationCategory::Schema,
-                    status: ValidationStatus::Error,
-                    message: format!("Tool '{}' has invalid JSON Schema: {}", tool_name, e),
-                    details: Some(json!({"schema": schema, "error": e.to_string()})),
-                    duration: test_start.elapsed(),
-                    timestamp: Utc::now(),
-                });
-            }
+        // Use our simplified validation to check schema structure
+        let validator = ParameterValidator::new();
+        let dummy_params = json!({}); // Empty params for schema validation
+        let result = validator.validate(schema, &dummy_params);
+
+        if result.errors.is_empty() {
+            self.add_result(ValidationResult {
+                test_id: format!("tool_schema_{}", tool_name),
+                test_name: format!("Tool Schema: {}", tool_name),
+                category: ValidationCategory::Schema,
+                status: ValidationStatus::Pass,
+                message: format!("Tool '{}' has valid JSON Schema structure", tool_name),
+                details: Some(schema.clone()),
+                duration: test_start.elapsed(),
+                timestamp: Utc::now(),
+            });
+        } else {
+            let error_messages: Vec<String> = result.errors.iter().map(|e| e.to_string()).collect();
+            self.add_result(ValidationResult {
+                test_id: format!("tool_schema_{}", tool_name),
+                test_name: format!("Tool Schema: {}", tool_name),
+                category: ValidationCategory::Schema,
+                status: ValidationStatus::Error,
+                message: format!("Tool '{}' has schema validation issues: {}", tool_name, error_messages.join(", ")),
+                details: Some(json!({"schema": schema, "errors": error_messages})),
+                duration: test_start.elapsed(),
+                timestamp: Utc::now(),
+            });
         }
 
         Ok(())

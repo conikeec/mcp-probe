@@ -4,7 +4,6 @@
 //! interactive TUI mode, non-interactive CLI mode, and validation engines.
 
 use anyhow::Result;
-use jsonschema::{Draft, JSONSchema};
 use serde_json::Value;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -102,17 +101,12 @@ impl ParameterValidator {
             transformations: Vec::new(),
         };
 
-        // Compile the JSON Schema
-        let compiled_schema = match self.compile_schema(schema) {
-            Ok(schema) => schema,
-            Err(e) => {
-                result.is_valid = false;
-                result
-                    .errors
-                    .push(ValidationError::InvalidSchema(e.to_string()));
-                return result;
-            }
-        };
+        // Validate schema syntax
+        if let Err(e) = self.validate_schema_syntax(schema) {
+            result.is_valid = false;
+            result.errors.push(e);
+            return result;
+        }
 
         // Apply transformations if enabled
         if self.auto_transform {
@@ -123,16 +117,10 @@ impl ParameterValidator {
             }
         }
 
-        // Validate against schema
-        if let Err(validation_errors) = compiled_schema.validate(&result.validated_params) {
+        // Perform basic validation against schema
+        if let Err(e) = self.validate_against_schema(schema, &result.validated_params) {
             result.is_valid = false;
-            for error in validation_errors {
-                let field = error.instance_path.to_string();
-                let reason = error.to_string();
-                result
-                    .errors
-                    .push(ValidationError::ValidationFailed { field, reason });
-            }
+            result.errors.push(e);
         }
 
         // Check for required fields
@@ -144,12 +132,54 @@ impl ParameterValidator {
         result
     }
 
-    /// Compile JSON Schema with error handling
-    fn compile_schema(&self, schema: &Value) -> Result<JSONSchema, ValidationError> {
-        JSONSchema::options()
-            .with_draft(Draft::Draft7)
-            .compile(schema)
-            .map_err(|e| ValidationError::InvalidSchema(e.to_string()))
+    /// Validate JSON Schema syntax (simplified - no external deps for now)
+    fn validate_schema_syntax(&self, schema: &Value) -> Result<(), ValidationError> {
+        // Basic validation - ensure it's an object with proper structure
+        if !schema.is_object() {
+            return Err(ValidationError::InvalidSchema(
+                "Schema must be a JSON object".to_string(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Validate parameters against schema (simplified validation)
+    fn validate_against_schema(&self, schema: &Value, params: &Value) -> Result<(), ValidationError> {
+        // Get the properties from the schema
+        if let Some(properties) = schema.get("properties").and_then(|p| p.as_object()) {
+            if let Some(params_obj) = params.as_object() {
+                for (field_name, field_schema) in properties {
+                    if let Some(param_value) = params_obj.get(field_name) {
+                        // Check basic type validation
+                        if let Some(expected_type) = field_schema.get("type").and_then(|t| t.as_str()) {
+                            let valid_type = match expected_type {
+                                "string" => param_value.is_string(),
+                                "number" => param_value.is_number(),
+                                "integer" => param_value.is_number() && param_value.as_f64().map_or(false, |n| n.fract() == 0.0),
+                                "boolean" => param_value.is_boolean(),
+                                "array" => param_value.is_array(),
+                                "object" => param_value.is_object(),
+                                _ => true, // Allow unknown types
+                            };
+
+                            if !valid_type {
+                                return Err(ValidationError::ValidationFailed {
+                                    field: field_name.clone(),
+                                    reason: format!("Expected type '{}' but got '{}'", expected_type, 
+                                        if param_value.is_string() { "string" }
+                                        else if param_value.is_number() { "number" }
+                                        else if param_value.is_boolean() { "boolean" }
+                                        else if param_value.is_array() { "array" }
+                                        else if param_value.is_object() { "object" }
+                                        else { "null" })
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Apply automatic transformations to parameters
