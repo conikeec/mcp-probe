@@ -35,7 +35,7 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 # JSON Schema validation
-jsonschema = "0.18"
+jsonschema = "0.30"
 
 # Async trait support
 async-trait = { workspace = true }

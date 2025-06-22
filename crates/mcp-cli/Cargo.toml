@@ -59,10 +59,10 @@ url = { workspace = true }
 
 # Validation
 tempfile = "3.8"
-jsonschema = "0.18"
+jsonschema = "0.30"
 
 # Table and spinner display
-tabled = "0.15"
+tabled = "0.20"
 indicatif = "0.17"
 
 [dev-dependencies]
