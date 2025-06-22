@@ -11,7 +11,7 @@ title: "MCP Probe - Production-grade MCP Debugger"
 
 <div class="text-center hero-buttons">
   <a href="{{ site.github.download_url }}" class="btn btn-primary">Download {{ site.current_version }}</a>
-  <a href="getting-started.html" class="btn btn-secondary">Get Started</a>
+  <a href="getting-started/" class="btn btn-secondary">Get Started</a>
   <a href="{{ site.github.repository_url }}" class="btn btn-outline">View on GitHub</a>
 </div>
 
@@ -162,13 +162,13 @@ mcp-probe export --stdio python server.py --format markdown --output server-capa
   <div class="community-card">
     <h3>📖 Documentation</h3>
     <p>Comprehensive guides and API reference</p>
-    <a href="documentation.html">Read the Docs</a>
+    <a href="documentation/">Read the Docs</a>
   </div>
   
   <div class="community-card">
     <h3>💡 Examples</h3>
     <p>Real-world usage examples and tutorials</p>
-    <a href="examples.html">View Examples</a>
+    <a href="examples/">View Examples</a>
   </div>
   
   <div class="community-card">
@@ -180,7 +180,7 @@ mcp-probe export --stdio python server.py --format markdown --output server-capa
   <div class="community-card">
     <h3>🤝 Contributing</h3>
     <p>Help improve MCP Probe</p>
-    <a href="contributing.html">Contribute</a>
+    <a href="contributing/">Contribute</a>
   </div>
 </div>
 
@@ -202,7 +202,7 @@ mcp-probe export --stdio python server.py --format markdown --output server-capa
 <div class="text-center cta-section">
   <h2>Ready to start debugging MCP servers?</h2>
   <p>Get MCP Probe {{ site.current_version }} and experience the difference</p>
-  <a href="getting-started.html" class="btn btn-primary btn-large">Get Started Now</a>
+  <a href="getting-started/" class="btn btn-primary btn-large">Get Started Now</a>
 </div>
 
 ---
