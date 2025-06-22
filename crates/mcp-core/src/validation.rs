@@ -144,18 +144,27 @@ impl ParameterValidator {
     }
 
     /// Validate parameters against schema (simplified validation)
-    fn validate_against_schema(&self, schema: &Value, params: &Value) -> Result<(), ValidationError> {
+    fn validate_against_schema(
+        &self,
+        schema: &Value,
+        params: &Value,
+    ) -> Result<(), ValidationError> {
         // Get the properties from the schema
         if let Some(properties) = schema.get("properties").and_then(|p| p.as_object()) {
             if let Some(params_obj) = params.as_object() {
                 for (field_name, field_schema) in properties {
                     if let Some(param_value) = params_obj.get(field_name) {
                         // Check basic type validation
-                        if let Some(expected_type) = field_schema.get("type").and_then(|t| t.as_str()) {
+                        if let Some(expected_type) =
+                            field_schema.get("type").and_then(|t| t.as_str())
+                        {
                             let valid_type = match expected_type {
                                 "string" => param_value.is_string(),
                                 "number" => param_value.is_number(),
-                                "integer" => param_value.is_number() && param_value.as_f64().map_or(false, |n| n.fract() == 0.0),
+                                "integer" => {
+                                    param_value.is_number()
+                                        && param_value.as_f64().is_some_and(|n| n.fract() == 0.0)
+                                }
                                 "boolean" => param_value.is_boolean(),
                                 "array" => param_value.is_array(),
                                 "object" => param_value.is_object(),
@@ -165,13 +174,23 @@ impl ParameterValidator {
                             if !valid_type {
                                 return Err(ValidationError::ValidationFailed {
                                     field: field_name.clone(),
-                                    reason: format!("Expected type '{}' but got '{}'", expected_type, 
-                                        if param_value.is_string() { "string" }
-                                        else if param_value.is_number() { "number" }
-                                        else if param_value.is_boolean() { "boolean" }
-                                        else if param_value.is_array() { "array" }
-                                        else if param_value.is_object() { "object" }
-                                        else { "null" })
+                                    reason: format!(
+                                        "Expected type '{}' but got '{}'",
+                                        expected_type,
+                                        if param_value.is_string() {
+                                            "string"
+                                        } else if param_value.is_number() {
+                                            "number"
+                                        } else if param_value.is_boolean() {
+                                            "boolean"
+                                        } else if param_value.is_array() {
+                                            "array"
+                                        } else if param_value.is_object() {
+                                            "object"
+                                        } else {
+                                            "null"
+                                        }
+                                    ),
                                 });
                             }
                         }

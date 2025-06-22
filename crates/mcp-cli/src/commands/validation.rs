@@ -1026,7 +1026,11 @@ impl ValidationEngine {
                 test_name: format!("Tool Schema: {}", tool_name),
                 category: ValidationCategory::Schema,
                 status: ValidationStatus::Error,
-                message: format!("Tool '{}' has schema validation issues: {}", tool_name, error_messages.join(", ")),
+                message: format!(
+                    "Tool '{}' has schema validation issues: {}",
+                    tool_name,
+                    error_messages.join(", ")
+                ),
                 details: Some(json!({"schema": schema, "errors": error_messages})),
                 duration: test_start.elapsed(),
                 timestamp: Utc::now(),
