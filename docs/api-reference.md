@@ -78,8 +78,8 @@ Export MCP server capabilities and session data.
 mcp-probe export [OPTIONS] <TRANSPORT_OPTIONS>
 ```
 
-For detailed documentation, see our [Documentation page](documentation.html).
+For detailed documentation, see our [Documentation page](../documentation/).
 
 ---
 
-*For more examples and detailed usage, see our [Examples page](examples.html) and [Documentation](documentation.html).*
+*For more examples and detailed usage, see our [Examples page](../examples/) and [Documentation](../documentation/).*

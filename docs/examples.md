@@ -917,8 +917,8 @@ echo "Memory usage analysis..."
 
 These examples should give you a solid foundation for using MCP Probe in various scenarios. For more advanced usage:
 
-1. **[Read the Documentation](documentation.html)** - Learn about all available features
-2. **[API Reference](api-reference.html)** - Detailed technical documentation  
-3. **[Contributing](contributing.html)** - Help improve MCP Probe
+1. **[Read the Documentation](../documentation/)** - Learn about all available features
+2. **[API Reference](../api-reference/)** - Detailed technical documentation  
+3. **[Contributing](../contributing/)** - Help improve MCP Probe
 
 **Have a specific use case not covered here?** [Open an issue](https://github.com/conikeec/mcp-probe/issues) and we'll help you figure it out! 

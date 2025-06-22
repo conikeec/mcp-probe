@@ -14,10 +14,10 @@ MCP Probe is a comprehensive debugging and testing tool for Model Context Protoc
 
 ## 🚀 Quick Navigation
 
-- **[Getting Started](getting-started.html)** - Installation and first steps
-- **[Examples](examples.html)** - Real-world usage scenarios  
-- **[API Reference](api-reference.html)** - Complete CLI and SDK reference
-- **[Contributing](contributing.html)** - Help improve MCP Probe
+- **[Getting Started](../getting-started/)** - Installation and first steps
+- **[Examples](../examples/)** - Real-world usage scenarios  
+- **[API Reference](../api-reference/)** - Complete CLI and SDK reference
+- **[Contributing](../contributing/)** - Help improve MCP Probe
 
 ## 🔧 Core Features
 

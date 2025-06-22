@@ -341,8 +341,8 @@ jq . ~/.mcp-probe/logs/mcp-probe-$(date +%Y%m%d)*.log
 
 ### Getting Help
 
-- **Documentation**: [Read the full documentation](documentation.html)
-- **Examples**: [View usage examples](examples.html)
+- **Documentation**: [Read the full documentation](../documentation/)
+- **Examples**: [View usage examples](../examples/)
 - **Issues**: [Report bugs on GitHub](https://github.com/conikeec/mcp-probe/issues)
 - **Discussions**: [Join GitHub Discussions](https://github.com/conikeec/mcp-probe/discussions)
 
@@ -350,11 +350,11 @@ jq . ~/.mcp-probe/logs/mcp-probe-$(date +%Y%m%d)*.log
 
 Now that you have MCP Probe installed and working:
 
-1. **[Explore Examples](examples.html)** - See real-world usage scenarios
-2. **[Read Documentation](documentation.html)** - Learn about advanced features
-3. **[API Reference](api-reference.html)** - Dive into the technical details
-4. **[Contributing](contributing.html)** - Help improve MCP Probe
+1. **[Explore Examples](../examples/)** - See real-world usage scenarios
+2. **[Read Documentation](../documentation/)** - Learn about advanced features
+3. **[API Reference](../api-reference/)** - Dive into the technical details
+4. **[Contributing](../contributing/)** - Help improve MCP Probe
 
 ---
 
-**Need more help?** Check out our [examples page](examples.html) for detailed walkthroughs of common scenarios! 
+**Need more help?** Check out our [examples page](../examples/) for detailed walkthroughs of common scenarios! 
