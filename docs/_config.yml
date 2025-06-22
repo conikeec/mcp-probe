@@ -1,0 +1,71 @@
+# MCP Probe Website Configuration
+title: "MCP Probe"
+tagline: "Production-grade Model Context Protocol debugger and client"
+description: "An interactive CLI debugger and TUI for MCP servers built in Rust. Debug, test, and validate MCP servers with ease."
+
+# Site settings
+url: "https://conikeec.github.io"
+baseurl: "/mcp-probe"
+repository: "conikeec/mcp-probe"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Navigation
+header_pages:
+  - getting-started.md
+  - documentation.md
+  - examples.md
+  - api-reference.md
+  - contributing.md
+
+# Social links
+github_username: conikeec
+twitter_username: # Add if desired
+
+# SEO
+author:
+  name: "Chetan Conikee"
+  email: "chetan@conikee.com"
+
+# Google Analytics (optional)
+# google_analytics: UA-XXXXXXXX-X
+
+# Site features
+show_excerpts: true
+show_downloads: true
+
+# Custom variables
+current_version: "v0.2.4"
+rust_version: "1.75+"
+
+# GitHub repository info
+github:
+  repository_url: "https://github.com/conikeec/mcp-probe"
+  download_url: "https://github.com/conikeec/mcp-probe/releases/latest"
+  issues_url: "https://github.com/conikeec/mcp-probe/issues"
+
+# Feature highlights
+features:
+  - title: "Interactive TUI"
+    description: "Rich terminal interface for real-time MCP debugging"
+  - title: "Multi-Transport"
+    description: "Support for stdio, HTTP+SSE, and HTTP streaming"
+  - title: "Production Ready"
+    description: "Built in Rust with comprehensive testing and validation"
+  - title: "Cross Platform"
+    description: "Works on Linux, macOS, and Windows"
+
+# Installation methods
+install_methods:
+  homebrew: "brew install conikeec/tap/mcp-probe"
+  cargo: "cargo install mcp-cli"
+  binary: "Download from GitHub releases"
