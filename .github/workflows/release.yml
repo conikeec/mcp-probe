@@ -274,19 +274,22 @@ jobs:
 
       - name: Wait for mcp-probe-core to be available
         run: |
-          echo "Waiting for mcp-probe-core to be available on crates.io..."
+          # Extract version from workspace Cargo.toml
+          VERSION=$(grep -E "^version = " Cargo.toml | head -1 | sed 's/version = "//;s/"//')
+          echo "Waiting for mcp-probe-core v$VERSION to be available on crates.io..."
+
           for i in {1..12}; do
-            if cargo search mcp-probe-core | grep -q "mcp-probe-core.*0\.1\.55"; then
-              echo "mcp-probe-core v0.1.55 is now available!"
+            if cargo search mcp-probe-core | grep -q "mcp-probe-core.*$VERSION"; then
+              echo "mcp-probe-core v$VERSION is now available!"
               break
             fi
-            echo "Attempt $i/12: mcp-probe-core not yet available, waiting 10 seconds..."
+            echo "Attempt $i/12: mcp-probe-core v$VERSION not yet available, waiting 10 seconds..."
             sleep 10
           done
 
           # Final check
-          if ! cargo search mcp-probe-core | grep -q "mcp-probe-core.*0\.1\.55"; then
-            echo "ERROR: mcp-probe-core v0.1.55 is still not available after 2 minutes"
+          if ! cargo search mcp-probe-core | grep -q "mcp-probe-core.*$VERSION"; then
+            echo "ERROR: mcp-probe-core v$VERSION is still not available after 2 minutes"
             exit 1
           fi
 
