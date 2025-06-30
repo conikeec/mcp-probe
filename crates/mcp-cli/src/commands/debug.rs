@@ -179,7 +179,11 @@ impl DebugCommand {
                 }
             }
             Err(e) => {
-                println!("❌ Failed to list resources: {}", e);
+                if e.to_string().contains("Method not found") {
+                    println!("📁 Resources (0):");
+                } else {
+                    println!("❌ Failed to list resources: {}", e);
+                }
             }
         }
 
@@ -191,7 +195,11 @@ impl DebugCommand {
                 }
             }
             Err(e) => {
-                println!("❌ Failed to list prompts: {}", e);
+                if e.to_string().contains("Method not found") {
+                    println!("💬 Prompts (0):");
+                } else {
+                    println!("❌ Failed to list prompts: {}", e);
+                }
             }
         }
 
