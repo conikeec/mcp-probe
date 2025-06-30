@@ -436,7 +436,7 @@ impl std::fmt::Display for JsonRpcError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "JSON-RPC Error {}: {}", self.code, self.message)?;
         if let Some(data) = &self.data {
-            write!(f, " ({})", data)?;
+            write!(f, " ({data})")?;
         }
         Ok(())
     }
@@ -486,8 +486,8 @@ impl From<i32> for RequestId {
 impl std::fmt::Display for RequestId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::String(s) => write!(f, "{}", s),
-            Self::Number(n) => write!(f, "{}", n),
+            Self::String(s) => write!(f, "{s}"),
+            Self::Number(n) => write!(f, "{n}"),
             Self::Null => write!(f, "null"),
         }
     }

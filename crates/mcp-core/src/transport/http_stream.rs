@@ -336,7 +336,7 @@ impl Transport for HttpStreamTransport {
             }
             Err(_) => Err(McpError::Transport(TransportError::TimeoutError {
                 transport_type: "http-stream".to_string(),
-                reason: format!("Request timed out after {:?}", timeout_duration),
+                reason: format!("Request timed out after {timeout_duration:?}"),
             })),
         }
     }
@@ -355,7 +355,7 @@ impl Transport for HttpStreamTransport {
             .map_err(|e| {
                 McpError::Transport(TransportError::SerializationError {
                     transport_type: "http-stream".to_string(),
-                    reason: format!("Failed to serialize notification: {}", e),
+                    reason: format!("Failed to serialize notification: {e}"),
                 })
             })?;
 
@@ -377,7 +377,7 @@ impl Transport for HttpStreamTransport {
         let response = request_builder.send().await.map_err(|e| {
             McpError::Transport(TransportError::NetworkError {
                 transport_type: "http-stream".to_string(),
-                reason: format!("Notification request failed: {}", e),
+                reason: format!("Notification request failed: {e}"),
             })
         })?;
 
