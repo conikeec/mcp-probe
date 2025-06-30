@@ -19,7 +19,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Workspace crates
-mcp-probe-core = { version = "0.2.4", path = "../mcp-core" }
+mcp-probe-core = { version = "0.3.0", path = "../mcp-core" }
 
 # Async runtime
 tokio = { workspace = true }
