@@ -17,7 +17,9 @@ use tracing::{debug, info};
 
 use super::{Transport, TransportConfig, TransportInfo};
 use crate::error::{McpError, McpResult, TransportError};
-use crate::messages::{JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId};
+use crate::messages::{
+    JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, RequestId,
+};
 
 /// MCP Streamable HTTP transport implementation (2025-03-26)
 pub struct HttpStreamTransport {
@@ -88,7 +90,8 @@ impl HttpStreamTransport {
 
         debug!("Sending MCP request to {}: {}", url, json_body);
 
-        let mut request_builder = self.client
+        let mut request_builder = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json, text/event-stream")
@@ -185,8 +188,7 @@ impl HttpStreamTransport {
     fn parse_sse_response(&self, response_text: &str) -> McpResult<JsonRpcResponse> {
         // Look for data lines in SSE format
         for line in response_text.lines() {
-            if line.starts_with("data: ") {
-                let json_text = &line[6..]; // Skip "data: "
+            if let Some(json_text) = line.strip_prefix("data: ") {
                 if let Ok(json_response) = serde_json::from_str::<serde_json::Value>(json_text) {
                     if json_response.get("id").is_some() {
                         // Found a JSON-RPC response
@@ -204,18 +206,22 @@ impl HttpStreamTransport {
 
     /// Extract RequestId from JSON response
     fn extract_request_id(&self, json_response: &serde_json::Value) -> RequestId {
-        json_response.get("id").and_then(|id| {
-            match id {
+        json_response
+            .get("id")
+            .and_then(|id| match id {
                 serde_json::Value::String(s) => Some(RequestId::String(s.clone())),
                 serde_json::Value::Number(n) => n.as_i64().map(RequestId::Number),
                 serde_json::Value::Null => Some(RequestId::Null),
                 _ => None,
-            }
-        }).unwrap_or(RequestId::Null)
+            })
+            .unwrap_or(RequestId::Null)
     }
 
     /// Send initialization request and extract session ID
-    async fn send_initialize_request(&mut self, request: JsonRpcRequest) -> McpResult<JsonRpcResponse> {
+    async fn send_initialize_request(
+        &mut self,
+        request: JsonRpcRequest,
+    ) -> McpResult<JsonRpcResponse> {
         let url = self.get_mcp_url();
         let json_body = serde_json::to_string(&JsonRpcMessage::Request(request)).map_err(|e| {
             McpError::Transport(TransportError::SerializationError {
@@ -226,7 +232,8 @@ impl HttpStreamTransport {
 
         debug!("Sending initialization request to {}: {}", url, json_body);
 
-        let mut request_builder = self.client
+        let mut request_builder = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json, text/event-stream")
@@ -281,7 +288,10 @@ impl Transport for HttpStreamTransport {
     }
 
     async fn connect(&mut self) -> McpResult<()> {
-        info!("Connecting MCP Streamable HTTP transport to {}", self.base_url);
+        info!(
+            "Connecting MCP Streamable HTTP transport to {}",
+            self.base_url
+        );
 
         // Just mark as connected - initialization happens in first request
         self.connected = true;
@@ -305,16 +315,18 @@ impl Transport for HttpStreamTransport {
 
         let timeout_duration = timeout_duration.unwrap_or(Duration::from_secs(30));
         let is_initialize = request.method == "initialize";
-        
+
         let result = timeout(timeout_duration, async {
             if is_initialize {
                 // Special handling for initialization to extract session ID
                 self.send_initialize_request(request).await
             } else {
                 // Regular request using existing session ID
-                self.send_mcp_request(&JsonRpcMessage::Request(request)).await
+                self.send_mcp_request(&JsonRpcMessage::Request(request))
+                    .await
             }
-        }).await;
+        })
+        .await;
 
         match result {
             Ok(response) => {
@@ -325,7 +337,7 @@ impl Transport for HttpStreamTransport {
             Err(_) => Err(McpError::Transport(TransportError::TimeoutError {
                 transport_type: "http-stream".to_string(),
                 reason: format!("Request timed out after {:?}", timeout_duration),
-            }))
+            })),
         }
     }
 
@@ -339,14 +351,16 @@ impl Transport for HttpStreamTransport {
 
         // Send notification (no response expected)
         let url = self.get_mcp_url();
-        let json_body = serde_json::to_string(&JsonRpcMessage::Notification(notification)).map_err(|e| {
-            McpError::Transport(TransportError::SerializationError {
-                transport_type: "http-stream".to_string(),
-                reason: format!("Failed to serialize notification: {}", e),
-            })
-        })?;
+        let json_body = serde_json::to_string(&JsonRpcMessage::Notification(notification))
+            .map_err(|e| {
+                McpError::Transport(TransportError::SerializationError {
+                    transport_type: "http-stream".to_string(),
+                    reason: format!("Failed to serialize notification: {}", e),
+                })
+            })?;
 
-        let mut request_builder = self.client
+        let mut request_builder = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json, text/event-stream")
@@ -386,7 +400,8 @@ impl Transport for HttpStreamTransport {
         // This is not implemented yet - would require persistent SSE connection
         Err(McpError::Transport(TransportError::InvalidConfig {
             transport_type: "http-stream".to_string(),
-            reason: "Unsolicited message reception not implemented for Modern Streamable HTTP".to_string(),
+            reason: "Unsolicited message reception not implemented for Modern Streamable HTTP"
+                .to_string(),
         }))
     }
 
@@ -416,8 +431,11 @@ impl Transport for HttpStreamTransport {
         info.add_metadata("mcp_endpoint", serde_json::json!(self.get_mcp_url()));
         info.add_metadata("has_auth", serde_json::json!(self.auth_header.is_some()));
         info.add_metadata("has_session", serde_json::json!(self.session_id.is_some()));
-        info.add_metadata("protocol", serde_json::json!("Modern Streamable HTTP (2025-03-26)"));
-        
+        info.add_metadata(
+            "protocol",
+            serde_json::json!("Modern Streamable HTTP (2025-03-26)"),
+        );
+
         if let Some(session_id) = &self.session_id {
             info.add_metadata("session_id", serde_json::json!(session_id));
         }
@@ -458,9 +476,12 @@ mod tests {
 
     #[test]
     fn test_transport_info_metadata() {
-        let transport = HttpStreamTransport::new("http://localhost:3001".to_string(), Some("Bearer token".to_string()));
+        let transport = HttpStreamTransport::new(
+            "http://localhost:3001".to_string(),
+            Some("Bearer token".to_string()),
+        );
         let info = transport.get_info();
-        
+
         assert_eq!(info.transport_type, "http-stream");
         assert!(info.metadata.contains_key("has_auth"));
         assert!(info.metadata.contains_key("protocol"));
@@ -468,9 +489,12 @@ mod tests {
 
     #[test]
     fn test_auth_header_handling() {
-        let transport_with_auth = HttpStreamTransport::new("http://localhost:3001".to_string(), Some("Bearer token123".to_string()));
+        let transport_with_auth = HttpStreamTransport::new(
+            "http://localhost:3001".to_string(),
+            Some("Bearer token123".to_string()),
+        );
         assert!(transport_with_auth.auth_header.is_some());
-        
+
         let transport_no_auth = HttpStreamTransport::new("http://localhost:3001".to_string(), None);
         assert!(transport_no_auth.auth_header.is_none());
     }
