@@ -65,6 +65,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::uninlined_format_args)]
 
 pub mod client;
 pub mod error;

@@ -247,8 +247,7 @@ impl ParameterValidator {
                         if let Some(fixed_url) = self.auto_fix_url(&original_url) {
                             *param_value = Value::String(fixed_url.clone());
                             transformations.push(format!(
-                                "Auto-prefixed URL in '{}': '{}' → '{}'",
-                                field_name, original_url, fixed_url
+                                "Auto-prefixed URL in '{field_name}': '{original_url}' → '{fixed_url}'"
                             ));
                         }
                     }
@@ -263,8 +262,7 @@ impl ParameterValidator {
                 if let Ok(num_val) = original_str.parse::<f64>() {
                     *param_value = Value::Number(serde_json::Number::from_f64(num_val).unwrap());
                     transformations.push(format!(
-                        "Converted string to number in '{}': '{}' → {}",
-                        field_name, original_str, num_val
+                        "Converted string to number in '{field_name}': '{original_str}' → {num_val}"
                     ));
                 }
             }
@@ -277,8 +275,7 @@ impl ParameterValidator {
                 if let Ok(int_val) = original_str.parse::<i64>() {
                     *param_value = Value::Number(serde_json::Number::from(int_val));
                     transformations.push(format!(
-                        "Converted string to integer in '{}': '{}' → {}",
-                        field_name, original_str, int_val
+                        "Converted string to integer in '{field_name}': '{original_str}' → {int_val}"
                     ));
                 }
             }
@@ -296,8 +293,7 @@ impl ParameterValidator {
                 if let Some(bool_val) = bool_val {
                     *param_value = Value::Bool(bool_val);
                     transformations.push(format!(
-                        "Converted string to boolean in '{}': '{}' → {}",
-                        field_name, original_str, bool_val
+                        "Converted string to boolean in '{field_name}': '{original_str}' → {bool_val}"
                     ));
                 }
             }
@@ -317,10 +313,10 @@ impl ParameterValidator {
             || url.starts_with("127.0.0.1")
             || url.starts_with("0.0.0.0")
         {
-            Some(format!("http://{}", url))
+            Some(format!("http://{url}"))
         } else if url.contains('.') && !url.contains(' ') {
             // Looks like a domain name
-            Some(format!("https://{}", url))
+            Some(format!("https://{url}"))
         } else {
             None
         }

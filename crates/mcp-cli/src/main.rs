@@ -4,6 +4,8 @@
 //! allowing developers to test and validate their MCP implementations before
 //! deploying to production LLM hosts.
 
+#![allow(clippy::uninlined_format_args)]
+
 use anyhow::Result;
 use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
