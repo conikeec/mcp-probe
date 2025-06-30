@@ -335,7 +335,7 @@ mod tests {
 
         for (level, expected) in levels.iter().zip(expected.iter()) {
             let json = serde_json::to_string(level).unwrap();
-            assert_eq!(json, format!("\"{}\"", expected));
+            assert_eq!(json, format!("\"{expected}\""));
             assert_eq!(level.to_string(), *expected);
         }
     }

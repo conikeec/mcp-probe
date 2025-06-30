@@ -317,7 +317,7 @@ impl McpClient {
 
         // Connect transport
         self.transport.connect().await.map_err(|e| {
-            let error = format!("Transport connection failed: {}", e);
+            let error = format!("Transport connection failed: {e}");
             self.set_error_state(error.clone());
             McpError::Protocol(ProtocolError::InitializationFailed { reason: error })
         })?;
@@ -405,7 +405,7 @@ impl McpClient {
 
     fn generate_request_id(&self) -> String {
         let counter = self.request_counter.fetch_add(1, Ordering::SeqCst);
-        format!("req_{}", counter)
+        format!("req_{counter}")
     }
 
     async fn start_message_processing(&mut self) -> McpResult<()> {

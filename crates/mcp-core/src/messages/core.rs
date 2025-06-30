@@ -229,7 +229,7 @@ impl JsonRpcResponse {
     {
         match (&self.result, &self.error) {
             (Some(result), None) => Ok(serde_json::from_value(result.clone())?),
-            (None, Some(error)) => Err(format!("JSON-RPC error: {}", error).into()),
+            (None, Some(error)) => Err(format!("JSON-RPC error: {error}").into()),
             _ => Err("Invalid response: both result and error are present or missing".into()),
         }
     }
