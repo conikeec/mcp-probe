@@ -1,5 +1,7 @@
 # 🔍 MCP Probe - Advanced MCP Protocol Debugger & Interactive Client
 
+![Terminal of week](https://terminaltrove.com/assets/media/terminal_trove_tool_of_the_week_green_on_dark_grey_bg.png)
+
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](Cargo.toml)
