@@ -62,8 +62,8 @@ tempfile = "3.8"
 # jsonschema = "0.18"  # Using simplified validation in mcp-core instead
 
 # Table and spinner display
-tabled = "0.15"
-indicatif = "0.17"
+tabled = "0.20"
+indicatif = "0.18"
 
 [dev-dependencies]
 criterion = { workspace = true }
