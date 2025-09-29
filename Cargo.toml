@@ -45,7 +45,7 @@ hyper-tungstenite = "0.13"
 clap = { version = "4.4", features = ["derive", "env"] }
 ratatui = "0.28"
 crossterm = "0.28"
-tui-textarea = "0.6"
+tui-textarea = "0.7"
 dialoguer = { version = "0.11", features = ["completion"] }
 
 # Flow states handled by internal state machine
